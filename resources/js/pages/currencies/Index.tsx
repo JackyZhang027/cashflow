@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import PaginatedTable from '@/Components/tables/table-with-pagination';
+import PaginatedTable from '@/components/tables/table-with-pagination';
 import CurrencyFormModal from './Form';
 
 function Index({ data, search }: any) {

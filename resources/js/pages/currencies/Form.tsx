@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
-import Modal from '@/Components/Modal';
+import Modal from '@components/Modal';
 
 type Currency = {
     id?: number;
