@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useForm } from '@inertiajs/react';
-import Modal from '@/components/Modal';
+import Modal from '@components/modal';
 
 type Branch = {
     id?: number;
