@@ -31,7 +31,6 @@ class Transaction extends Model
     
     protected $casts = [
         'is_opening' => 'boolean',
-        'transaction_date' => 'date',
     ];
 
     /**
