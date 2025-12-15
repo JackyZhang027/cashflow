@@ -20,7 +20,7 @@ function Index({ data, search, branches, currencies }: any) {
                         setSelected(null);
                         setShowModal(true);
                     }}
-                >
+                > 
                     + New Cash Out
                 </button>
             </div>
