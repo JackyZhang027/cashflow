@@ -21,7 +21,7 @@ function Index({ data, search, branches, currencies }: any) {
                         setShowModal(true);
                     }}
                 >
-                    + New Pengeluaran
+                    + New Cash Out
                 </button>
             </div>
 
