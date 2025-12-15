@@ -6,11 +6,6 @@ type Branch = {
     id?: number;
     code: string;
     name: string;
-    address?: string;
-    city?: string;
-    province?: string;
-    opened_at?: string | null;
-    closed_at?: string | null;
     is_active: boolean;
 };
 
@@ -26,11 +21,6 @@ export default function BranchFormModal({ show, branch, onClose }: Props) {
     const { data, setData, post, put, processing, errors, reset } = useForm<Branch>({
         code: '',
         name: '',
-        address: '',
-        city: '',
-        province: '',
-        opened_at: '',
-        closed_at: '',
         is_active: true,
     });
 
@@ -39,11 +29,6 @@ export default function BranchFormModal({ show, branch, onClose }: Props) {
             setData({
                 code: branch.code,
                 name: branch.name,
-                address: branch.address || '',
-                city: branch.city || '',
-                province: branch.province || '',
-                opened_at: branch.opened_at || '',
-                closed_at: branch.closed_at || '',
                 is_active: branch.is_active,
             });
         } else {
@@ -99,36 +84,6 @@ export default function BranchFormModal({ show, branch, onClose }: Props) {
                         value={data.name}
                         onChange={e => setData('name', e.target.value)}
                     />
-                </div>
-
-                {/* Address */}
-                <div>
-                    <label className="block text-sm font-medium">Address</label>
-                    <textarea
-                        className="w-full border rounded px-3 py-2"
-                        value={data.address}
-                        onChange={e => setData('address', e.target.value)}
-                    />
-                </div>
-
-                {/* City & Province */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="block text-sm font-medium">City</label>
-                        <input
-                            className="w-full border rounded px-3 py-2"
-                            value={data.city}
-                            onChange={e => setData('city', e.target.value)}
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium">Province</label>
-                        <input
-                            className="w-full border rounded px-3 py-2"
-                            value={data.province}
-                            onChange={e => setData('province', e.target.value)}
-                        />
-                    </div>
                 </div>
 
                 {/* Active */}

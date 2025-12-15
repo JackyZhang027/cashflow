@@ -23,9 +23,15 @@ class Transaction extends Model
         'status',
         'approved_at',
         'approved_by',
+        'is_opening',
         'created_by',
         'updated_by',
         'deleted_by',
+    ];
+    
+    protected $casts = [
+        'is_opening' => 'boolean',
+        'transaction_date' => 'date',
     ];
 
     /**
@@ -35,51 +41,89 @@ class Transaction extends Model
      */
     protected $appends = ['amount_in_words'];
 
-
     protected static function booted()
     {
+        /**
+         * CREATE
+         */
         static::creating(function ($transaction) {
+            if (! $transaction->reference) {
+                $transaction->reference = $transaction->generateReference();
+            }
+        });
 
-            if ($transaction->reference) {
+        /**
+         * UPDATE
+         */
+        static::updating(function ($transaction) {
+
+            // 1️⃣ Branch changed → FULL regenerate
+            if ($transaction->isDirty('branch_id')) {
+                $transaction->reference = $transaction->generateReference();
                 return;
             }
 
-            DB::transaction(function () use ($transaction) {
-
-                $date = Carbon::parse($transaction->transaction_date);
-
-                $year  = $date->format('y');
-                $month = $date->format('m');
-
-                $typeFlag = $transaction->type === 'in' ? '1' : '0';
-
-                // Load branch safely
-                $branch = $transaction->branch()->lockForUpdate()->first();
-
-                $prefix = sprintf(
-                    '%s%s%s%s%s',
-                    $transaction->currency?->code ?? 'XX',
-                    $branch->code,
-                    $year,
-                    $month,
-                    $typeFlag
-                );
-
-                // Lock rows for this prefix
-                $lastTransaction = self::where('reference', 'like', $prefix . '%')
-                    ->lockForUpdate()
-                    ->orderByDesc('reference')
-                    ->first();
-
-                $lastSequence = $lastTransaction
-                    ? intval(substr($lastTransaction->reference, -3))
-                    : 0;
-
-                $transaction->reference = $prefix
-                    . str_pad($lastSequence + 1, 3, '0', STR_PAD_LEFT);
-            });
+            // 2️⃣ Currency changed → replace currency only
+            if ($transaction->isDirty('currency_id')) {
+                $transaction->reference = $transaction->replaceCurrencyInReference();
+                return;
+            }
         });
     }
+
+    protected function generateReference(): string
+    {
+        return DB::transaction(function () {
+
+            $date  = Carbon::parse($this->transaction_date);
+            $year  = $date->format('y');
+            $month = $date->format('m');
+            $typeFlag = $this->type === 'in' ? '1' : '0';
+
+            $branch = $this->branch()->lockForUpdate()->first();
+
+            // Sequence ignores currency
+            $basePrefix = sprintf(
+                '%s%s%s%s',
+                $branch->code,
+                $year,
+                $month,
+                $typeFlag
+            );
+
+            $last = self::where('reference', 'like', '%'.$basePrefix.'%')
+                ->lockForUpdate()
+                ->orderByDesc('reference')
+                ->first();
+
+            $seq = $last
+                ? intval(substr($last->reference, -3)) + 1
+                : 1;
+
+            return sprintf(
+                '%s%s%s',
+                $this->currency?->code ?? 'XX',
+                $basePrefix,
+                str_pad($seq, 3, '0', STR_PAD_LEFT)
+            );
+        });
+    }
+    
+    protected function replaceCurrencyInReference(): string
+    {
+        $oldRef = $this->getOriginal('reference');
+
+        if (! $oldRef) {
+            return $this->generateReference();
+        }
+
+        // Remove leading letters until first non-letter
+        // (works for USD, USDT, IDR, etc)
+        $suffix = preg_replace('/^[A-Z]+/i', '', $oldRef);
+
+        return ($this->currency?->code ?? 'XX') . $suffix;
+    }
+
 
     private function currencyWord(): string
     {

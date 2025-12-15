@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Branch;
+use App\Models\Currency;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -15,7 +16,10 @@ class BranchController extends Controller
     {
         $search = $request->input('search');
         $data = Branch::query()
-        ->when($search, function ($q) use ($search) {
+            ->with([
+                'openingBalances.currency'
+            ])
+            ->when($search, function ($q) use ($search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('code', 'like', "%{$search}%")
                     ->orWhere('name', 'like', "%{$search}%")
@@ -29,15 +33,21 @@ class BranchController extends Controller
                 'id' => $branch->id,
                 'code' => $branch->code,
                 'name' => $branch->name,
-                'city' => $branch->city,
-                'address' => $branch->address,
-                'province' => $branch->province,
-                'status' => $branch->is_active ? 'Active' : 'Inactive',
-                'is_active' => $branch->is_active
+                'status' => $branch->is_active ? 'active' : 'inactive',
+                'is_active' => $branch->is_active,
+                'opening_balances' => $branch->openingBalances->map(fn ($ob) => [
+                    'id' => $ob->id,
+                    'currency_id' => $ob->currency_id,
+                    'currency_code' => $ob->currency->code,
+                    'amount' => $ob->opening_balance,
+                    'opening_date' => $ob->opening_date,
+                ]),
+
             ]);
         return Inertia::render('branches/Index', [
             'data' => $data,
             'search' => $request->search,
+            'currencies' => Currency::where('is_active', TRUE)->get(),
         ]);
 
     }
@@ -51,9 +61,6 @@ class BranchController extends Controller
         $validated = $request->validate([
             'code' => 'required|unique:branches,code|max:10',
             'name' => 'required|max:100',
-            'address' => 'nullable|max:255',
-            'city' => 'nullable|max:100',
-            'province' => 'nullable|max:100',
             'is_active' => 'required|boolean',
         ]);
 
@@ -86,9 +93,6 @@ class BranchController extends Controller
         $validated = $request->validate([
             'code' => 'required|max:10|unique:branches,code,' . $branch->id,
             'name' => 'required|max:100',
-            'address' => 'nullable|max:255',
-            'city' => 'nullable|max:100',
-            'province' => 'nullable|max:100',
             'is_active' => 'required|boolean',
         ]);
         $branch->update($validated);

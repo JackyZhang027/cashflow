@@ -14,6 +14,7 @@ use App\Http\Controllers\MediaFolderController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\BranchOpeningBalanceController;
 
 Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::get('/', function () {
@@ -52,6 +53,10 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
 
     //Transactions
     Route::prefix('transactions')->group(function () {
+        Route::post('/opening-balances', [BranchOpeningBalanceController::class, 'store'])->name('branch-opening-balances.store');
+        Route::put('/opening-balances/{openingBalance}', [BranchOpeningBalanceController::class, 'update'])->name('branch-opening-balances.update');
+
+
         Route::get('in', [TransactionController::class, 'in'])->name('transactions.in.index');
         Route::get('out', [TransactionController::class, 'out'])->name('transactions.out.index');
 

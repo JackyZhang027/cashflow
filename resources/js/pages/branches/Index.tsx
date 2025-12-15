@@ -3,10 +3,26 @@ import { router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import PaginatedTable from '@/components/tables/table-with-pagination';
 import BranchFormModal from './Form';
+import StatusBadge from '@/components/status-badge';
+import OpeningBalanceModal from './OpeningBalanceModal';
 
-function Index({ data, search }: any) {
+function OpeningBalanceBadge({ balance, onClick }: any) {
+    return (
+        <button
+            onClick={onClick}
+            className="px-2 py-1 text-xs rounded bg-green-100 text-green-800 hover:bg-green-200"
+        >
+            {balance.currency_code}: {Number(balance.amount).toLocaleString()}
+        </button>
+    );
+}
+
+function Index({ data, search, currencies }: any) {
     const [showModal, setShowModal] = useState(false);
+    const [showOpeningBalance, setShowOpeningBalance] = useState(false);
     const [selectedBranch, setSelectedBranch] = useState<any | null>(null);
+    const [selectedOpeningBalance, setSelectedOpeningBalance] = useState(null);
+
 
     return (
         <div className="space-y-6 p-3">
@@ -18,7 +34,7 @@ function Index({ data, search }: any) {
                         setSelectedBranch(null);
                         setShowModal(true);
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded cursor-pointer"
+                    className="px-4 py-2 bg-blue-600 text-white rounded"
                 >
                     + New Branch
                 </button>
@@ -31,16 +47,49 @@ function Index({ data, search }: any) {
                 columns={[
                     { key: 'code', label: 'Code' },
                     { key: 'name', label: 'Name' },
-                    { key: 'address', label: 'Address' },
-                    { key: 'city', label: 'City' },
-                    { key: 'province', label: 'Province' },
-                    { key: 'status', label: 'Status' },
+                    {
+                        key: 'opening_balances',
+                        label: 'Opening Balance',
+                        render: (balances, row) => (
+                            <div className="flex flex-wrap gap-1">
+                                {balances.length === 0 && (
+                                    <span className="text-gray-400 text-xs">Not set</span>
+                                )}
+
+                                {balances.map((balance: any) => (
+                                    <OpeningBalanceBadge
+                                        key={balance.id}
+                                        balance={balance}
+                                        onClick={() => {
+                                            setSelectedBranch(row);
+                                            setSelectedOpeningBalance(balance);
+                                            setShowOpeningBalance(true);
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        ),
+                    },
+
+                    {
+                        key: 'status',
+                        label: 'Status',
+                        render: value => <StatusBadge status={value} />,
+                    },
                 ]}
                 rowActions={[
                     {
+                        key: 'balance',
+                        label: 'Opening Balance',
+                        onClick: branch => {
+                            setSelectedBranch(branch);
+                            setShowOpeningBalance(true);
+                        },
+                    },
+                    {
                         key: 'edit',
                         label: 'Edit',
-                        onClick: (branch) => {
+                        onClick: branch => {
                             setSelectedBranch(branch);
                             setShowModal(true);
                         },
@@ -49,7 +98,7 @@ function Index({ data, search }: any) {
                         key: 'delete',
                         label: 'Delete',
                         danger: true,
-                        onClick: (branch) => {
+                        onClick: branch => {
                             if (confirm(`Delete branch ${branch.name}?`)) {
                                 router.delete(route('branches.destroy', branch.id), {
                                     preserveScroll: true,
@@ -63,8 +112,8 @@ function Index({ data, search }: any) {
                         key: 'bulk-delete',
                         label: 'Delete Selected',
                         danger: true,
-                        onClick: (rows) => {
-                            if (confirm(`Are you sure you want to delete ${rows.length} branches?`)) {
+                        onClick: rows => {
+                            if (confirm(`Delete ${rows.length} branches?`)) {
                                 router.post(route('branches.bulk-delete'), {
                                     ids: rows.map(r => r.id),
                                 });
@@ -74,33 +123,48 @@ function Index({ data, search }: any) {
                     {
                         key: 'bulk-activate',
                         label: 'Activate Selected',
-                        onClick: (rows) => {
-                            if (confirm(`Are you sure you want to activate ${rows.length} branches?`)) {
-                                router.post(route('branches.bulk-activate'), {
-                                    ids: rows.map(r => r.id),
-                                });
-                            }
+                        onClick: rows => {
+                            router.post(route('branches.bulk-activate'), {
+                                ids: rows.map(r => r.id),
+                            });
                         },
                     },
                     {
                         key: 'bulk-deactivate',
                         label: 'Deactivate Selected',
-                        onClick: (rows) => {
-                            if (confirm(`Are you sure you want to deactivate ${rows.length} branches?`)) {
-                                router.post(route('branches.bulk-deactivate'), {
-                                    ids: rows.map(r => r.id),
-                                });
-                            }
+                        onClick: rows => {
+                            router.post(route('branches.bulk-deactivate'), {
+                                ids: rows.map(r => r.id),
+                            });
                         },
                     },
                 ]}
             />
 
+            {/* Branch create / edit */}
             <BranchFormModal
                 show={showModal}
                 branch={selectedBranch}
-                onClose={() => setShowModal(false)}
+                onClose={() => {
+                    setShowModal(false);
+                    setSelectedBranch(null);
+                }}
             />
+
+            {/* Opening balance */}
+            {selectedBranch && (
+                <OpeningBalanceModal
+                    show={showOpeningBalance}
+                    branch={selectedBranch}
+                    currencies={currencies}
+                    openingBalance={selectedOpeningBalance}
+                    onClose={() => {
+                        setShowOpeningBalance(false);
+                        setSelectedOpeningBalance(null);
+                    }}
+                />
+
+            )}
         </div>
     );
 }

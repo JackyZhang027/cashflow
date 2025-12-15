@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
-type Column = { key: string; label: string, data_type?: string };
+type Column = { key: string; label: string, data_type?: string, render?: (value: any, row: any) => React.ReactNode; };
 
 type PagedData<T> = {
     data: T[];
@@ -220,8 +220,8 @@ export default function PaginatedTable<T extends { id: number }>(props: {
                             <tr>
                                 <td
                                     colSpan={
-                                        columns.length + 
-                                        (rowActions.length > 0 ? 1 : 0) + 
+                                        columns.length +
+                                        (rowActions.length > 0 ? 1 : 0) +
                                         (bulkActions.length > 0 ? 1 : 0)
                                     }
                                     className="py-10 text-center text-gray-500"
@@ -231,8 +231,9 @@ export default function PaginatedTable<T extends { id: number }>(props: {
                             </tr>
                         )}
 
-                        {data.data.map((row) => (
+                        {data.data.map((row: any) => (
                             <tr key={row.id} className="hover:bg-gray-50">
+                                {/* Bulk checkbox */}
                                 {bulkActions.length > 0 && (
                                     <td className="px-4 py-3">
                                         <input
@@ -243,14 +244,27 @@ export default function PaginatedTable<T extends { id: number }>(props: {
                                         />
                                     </td>
                                 )}
-                                {columns.map((c) => (
-                                    <td key={c.key} className="px-4 py-3">
-                                        {c.data_type === 'currency'
-                                            ? new Intl.NumberFormat('en-US',{}).format((row as any)[c.key])
-                                            : String(c.key.split('.').reduce((obj, key) => obj && (obj as any)[key], row))}
-                                    </td>
-                                ))}
 
+                                {/* Data columns */}
+                                {columns.map((c) => {
+                                    const value = c.key
+                                        .split('.')
+                                        .reduce((obj, key) => obj && (obj as any)[key], row);
+
+                                    return (
+                                        <td key={c.key} className="px-4 py-3">
+                                            {c.render ? (
+                                                c.render(value, row)
+                                            ) : c.data_type === 'currency' ? (
+                                                new Intl.NumberFormat('id-ID').format(value)
+                                            ) : (
+                                                value ?? '-'
+                                            )}
+                                        </td>
+                                    );
+                                })}
+
+                                {/* Row actions */}
                                 {rowActions.length > 0 && (
                                     <td className="px-4 py-3 text-right space-x-2">
                                         {rowActions.map((a) => (
@@ -271,6 +285,7 @@ export default function PaginatedTable<T extends { id: number }>(props: {
                             </tr>
                         ))}
                     </tbody>
+
                 </table>
             </div>
 

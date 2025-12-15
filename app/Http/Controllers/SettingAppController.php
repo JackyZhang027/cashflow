@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\SettingApp;
 use Illuminate\Http\Request;
-use App\Helpers\EcommerceHelper;
 
 class SettingAppController extends Controller
 {
@@ -41,7 +40,6 @@ class SettingAppController extends Controller
         }
 
         $setting->fill($data)->save();
-        EcommerceHelper::clearCache();
 
         return redirect()->back()->with('success', 'Pengaturan berhasil disimpan.');
     }

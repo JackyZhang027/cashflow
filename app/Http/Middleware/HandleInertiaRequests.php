@@ -34,15 +34,30 @@ class HandleInertiaRequests extends Middleware
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
         return array_merge(parent::share($request), [
-            'name' => config('app.name'),
-            'quote' => ['message' => trim($message), 'author' => trim($author)],
+            'app' => [
+                'name' => config('app.name'),
+            ],
+
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user()
+                    ? [
+                        'id' => $request->user()->id,
+                        'name' => $request->user()->name,
+                        'email' => $request->user()->email,
+                    ]
+                    : null,
             ],
+
             'flash' => [
-                'success' => session('success'),
-                'error' => session('error'),
+                'success' => fn () => session('success'),
+                'error' => fn () => session('error'),
             ],
+
+            'setting' => fn () => SettingApp::select(
+                'app_name',
+                'logo',
+            )->first(),
         ]);
+
     }
 }

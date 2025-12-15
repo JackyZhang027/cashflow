@@ -7,7 +7,7 @@ export default function AppLogo() {
     logo?: string;
   } | null;
 
-  const defaultAppName = 'Laravel Starter Kit';
+  const defaultAppName = 'Laravel Starter Kitaa';
   const defaultLogo = '';
 
   const appName = setting?.app_name || defaultAppName;

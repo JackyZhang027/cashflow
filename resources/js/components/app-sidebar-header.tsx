@@ -18,7 +18,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
 
       {/* Right: Language + Theme */}
       <div className="flex items-center gap-4">
-        <Select value={lang} onValueChange={setLang}>
+        {/* <Select value={lang} onValueChange={setLang}>
           <SelectTrigger className="w-[120px]">
             <SelectValue placeholder="Language" />
           </SelectTrigger>
@@ -26,7 +26,7 @@ export function AppSidebarHeader({ breadcrumbs = [] }: { breadcrumbs?: Breadcrum
             <SelectItem value="id">🇮🇩 Bahasa</SelectItem>
             <SelectItem value="en">🇺🇸 English</SelectItem>
           </SelectContent>
-        </Select>
+        </Select> */}
 
         <AppearanceDropdown />
       </div>

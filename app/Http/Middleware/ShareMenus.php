@@ -7,6 +7,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Cache;
 
 class ShareMenus
 {
@@ -17,36 +18,52 @@ class ShareMenus
         Inertia::share('menus', function () use ($user) {
             if (!$user) return [];
 
-            // Ambil semua menu secara flat
-            $allMenus = Menu::orderBy('order')->get();
+            return Cache::remember(
+                "menus:user:{$user->id}",
+                now()->addMinutes(10),
+                function () use ($user) {
 
-            // Index berdasarkan ID
-            $indexed = $allMenus->keyBy('id');
+                    $allMenus = Menu::query()
+                        ->select([
+                            'id',
+                            'parent_id',
+                            'title',
+                            'route',
+                            'icon',
+                            'permission_name',
+                            'order',
+                        ])
+                        ->orderBy('order')
+                        ->get();
 
-            // Recursive builder (filtered by permission)
-            $buildTree = function ($parentId = null) use (&$buildTree, $indexed, $user) {
-                return $indexed
-                    ->filter(
-                        fn($menu) =>
-                        $menu->parent_id === $parentId &&
-                            (!$menu->permission_name || $user->can($menu->permission_name))
-                    )
-                    ->map(function ($menu) use (&$buildTree) {
-                        $menu->children = $buildTree($menu->id)->values();
-                        return $menu;
-                    })
-                    ->filter(
-                        fn($menu) =>
-                        $menu->route || $menu->children->isNotEmpty()
-                    )
-                    ->values();
-            };
+                    $indexed = $allMenus->keyBy('id');
 
-            $menus = $buildTree();
+                    $buildTree = function ($parentId = null) use (&$buildTree, $indexed, $user) {
+                        return $indexed
+                            ->filter(fn ($menu) =>
+                                $menu->parent_id === $parentId &&
+                                (!$menu->permission_name || $user->can($menu->permission_name))
+                            )
+                            ->map(function ($menu) use (&$buildTree) {
+                                return [
+                                    'title' => $menu->title,
+                                    'route' => $menu->route,
+                                    'icon' => $menu->icon,
+                                    'children' => $buildTree($menu->id)->values(),
+                                ];
+                            })
+                            ->filter(fn ($menu) =>
+                                $menu['route'] || $menu['children']->isNotEmpty()
+                            )
+                            ->values();
+                    };
 
-            return $menus;
+                    return $buildTree();
+                }
+            );
         });
 
         return $next($request);
     }
+
 }

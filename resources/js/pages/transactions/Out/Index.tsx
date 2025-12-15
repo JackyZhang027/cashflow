@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import PaginatedTable from '@/components/tables/table-with-pagination';
 import TransactionFormModal from '../Form';
+import StatusBadge from '@/components/status-badge';
 
 function Index({ data, search, branches, currencies }: any) {
     const [showModal, setShowModal] = useState(false);
@@ -35,7 +36,12 @@ function Index({ data, search, branches, currencies }: any) {
                     { key: 'currency.code', label: 'Currency' },
                     { key: 'amount', label: 'Amount' },
                     { key: 'actor_name', label: 'Pemohon' },
-                    { key: 'status', label: 'Status' },
+                    {
+                        key: 'status', 
+                        label: 'Status',
+                        render: (value) => <StatusBadge status={value} />,
+
+                    },
                 ]}
                 rowActions={[
                     {
