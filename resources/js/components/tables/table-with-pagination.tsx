@@ -16,6 +16,8 @@ type RowAction<T> = {
     label: string;
     onClick: (row: T) => void;
     danger?: boolean;
+    can?: (row: T) => boolean;
+    className?: string;
 };
 
 type BulkAction<T> = {
@@ -267,19 +269,24 @@ export default function PaginatedTable<T extends { id: number }>(props: {
                                 {/* Row actions */}
                                 {rowActions.length > 0 && (
                                     <td className="px-4 py-3 text-right space-x-2">
-                                        {rowActions.map((a) => (
-                                            <button
-                                                key={a.key}
-                                                onClick={() => a.onClick(row)}
-                                                className={`px-3 py-1 rounded-lg border text-sm cursor-pointer ${
-                                                    a.danger
-                                                        ? 'border-red-500 text-red-600'
-                                                        : 'border-gray-300'
-                                                }`}
-                                            >
-                                                {a.label}
-                                            </button>
+                                        {rowActions
+                                            .filter(a => !a.can || a.can(row))
+                                            .map((a) => (
+                                                <button
+                                                    key={a.key}
+                                                    onClick={() => a.onClick(row)}
+                                                    className={[
+                                                        'px-3 py-1 rounded-lg border text-sm cursor-pointer',
+                                                        a.danger
+                                                            ? 'border-red-500 text-red-600'
+                                                            : 'border-gray-300',
+                                                        a.className, // 👈 custom class
+                                                    ].filter(Boolean).join(' ')}
+                                                >
+                                                    {a.label}
+                                                </button>
                                         ))}
+
                                     </td>
                                 )}
                             </tr>

@@ -35,6 +35,12 @@ class RolePermissionSeeder extends Seeder
                 'transaction-view',
                 'transaction-in-view',
                 'transaction-out-view',
+                'approve-transaction',
+                'reject-transaction',
+                'create-transaction',
+                'edit-transaction',
+                'delete-transaction',
+                'scan-transaction-view',
             ],
             'Settings' => [
                 'settings-view',
@@ -51,10 +57,11 @@ class RolePermissionSeeder extends Seeder
 
         foreach ($permissions as $group => $perms) {
             foreach ($perms as $name) {
-                $permission = Permission::firstOrCreate([
-                    'name' => $name,
-                    'group' => $group,
-                ]);
+                $permission = Permission::updateOrCreate(
+                    ['name' => $name],        // match condition
+                    ['group' => $group]       // fields to update
+                );
+
 
                 // Assign ke master-admin
                 if (!$master_admin->hasPermissionTo($permission)) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import PaginatedTable from '@/components/tables/table-with-pagination';
 import TransactionFormModal from '../Form';
@@ -7,8 +7,12 @@ import StatusBadge from '@/components/status-badge';
 
 
 function Index({ data, search, branches, currencies }: any) {
+    const { props } = usePage<any>();
     const [showModal, setShowModal] = useState(false);
     const [selected, setSelected] = useState<any | null>(null);
+    const permissions: string[] = props.auth?.permissions ?? [];
+
+    const can = (permission: string) => permissions.includes(permission);
 
     return (
         <div className="space-y-6 p-3">
@@ -39,11 +43,22 @@ function Index({ data, search, branches, currencies }: any) {
                     { key: 'actor_name', label: 'Penyetor' },
                     {
                         key: 'status',
-                        label: 'Statuss',
+                        label: 'Status',
                         render: (value) => <StatusBadge status={value} />,
                     },
                 ]}
                 rowActions={[
+                    {
+                        key: 'approve',
+                        label: 'Approve / Reject',
+                        className: 'border-green-500 text-green-600',
+                        onClick: (row) => {
+                            router.visit(route('transactions.approval.show', row.id));
+                        },
+                        can: (row: any) =>
+                            row.status === 'pending' &&
+                            can('approve-transaction'),
+                    },
                     {
                         key: 'edit',
                         label: 'Edit',

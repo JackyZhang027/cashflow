@@ -63,9 +63,30 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
         Route::post('/', [TransactionController::class, 'store'])->name('transactions.store');
         Route::put('{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::delete('{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
+        Route::get('/transactions/{transaction}/approval', [TransactionController::class, 'show'])
+            ->name('transactions.approval.show')
+            ->middleware('can:approve-transaction');
+
         Route::get('/print', [TransactionController::class, 'print'])->name('transactions.print');
 
-    });
+        Route::prefix('transactions/{transaction}/approval')
+            ->group(function () {
+                Route::post('approve', [TransactionController::class, 'approve'])
+                    ->name('transactions.approval.approve')
+                    ->middleware('can:approve-transaction');;
+
+                Route::post('reject', [TransactionController::class, 'reject'])
+                    ->name('transactions.approval.reject')
+                    ->middleware('can:approve-transaction');;
+            });
+
+        });
+        Route::get('/transactions/scan', function () {
+            return Inertia::render('transactions/ScanApproval');
+        })->name('transactions.approval.scan.form');
+
+        Route::post('/transactions/approval/scan', [TransactionController::class, 'scan'])
+            ->name('transactions.approval.scan');
 
 });
 

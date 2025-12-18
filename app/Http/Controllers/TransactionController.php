@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\Branch;
 use App\Models\Currency;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -58,6 +59,21 @@ class TransactionController extends Controller
                 'currencies' => Currency::where('is_active', true)->get(['id', 'code']),
             ]
         );
+    }
+    
+    /* ================================
+     * Approval Page
+     * ================================ */
+    public function show(Transaction $transaction)
+    {
+       
+        return Inertia::render('transactions/Approval', [
+                'transaction' => $transaction->load([
+                                    'branch',
+                                    'currency',
+                                    'approver',
+                                ]),
+        ]);
     }
 
     /* ================================
@@ -155,6 +171,59 @@ class TransactionController extends Controller
                 'transactions' => $transactions,
             ])
             ->header('X-Inertia', 'false');
+    }
+
+    public function approve(Transaction $transaction)
+    {
+        $this->authorize('approve', $transaction);
+
+        if ($transaction->status !== 'pending') {
+            return back()->with('error', 'Transaction already processed.');
+        }
+
+        $transaction->update([
+            'status'       => 'approved',
+            'approved_at'  => now(),
+            'approved_by'  => Auth::id(),
+        ]);
+
+        return back()->with('success', 'Transaction approved.');
+    }
+
+    public function reject(Transaction $transaction)
+    {
+        $this->authorize('approve', $transaction);
+
+        if ($transaction->status !== 'pending') {
+            return back()->with('error', 'Transaction already processed.');
+        }
+
+        $transaction->update([
+            'status'       => 'rejected',
+            'approved_at'  => null,
+            'approved_by'  => null,
+        ]);
+
+        return back()->with('success', 'Transaction rejected.');
+    }
+
+    public function scan(Request $request)
+    {
+        $request->validate([
+            'reference' => 'required|string',
+        ]);
+
+        $transaction = Transaction::where('reference', $request->reference)->first();
+
+        if (! $transaction) {
+            return back()->with('error', 'Transaction not found');
+        }
+
+        if ($transaction->status !== 'pending') {
+            return back()->with('error', 'Transaction is not pending approval');
+        }
+
+        return redirect()->route('transactions.approval.show', $transaction);
     }
 
 

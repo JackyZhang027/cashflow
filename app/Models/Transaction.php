@@ -196,4 +196,8 @@ class Transaction extends Model
     {
         return $this->belongsTo(Currency::class);
     }
+    public function approver()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
 }

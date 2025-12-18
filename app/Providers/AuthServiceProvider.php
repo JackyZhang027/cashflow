@@ -10,6 +10,7 @@ class AuthServiceProvider extends ServiceProvider
 {
     protected $policies = [
         MediaFolder::class => MediaFolderPolicy::class,
+        \App\Models\Transaction::class => \App\Policies\TransactionPolicy::class,
     ];
 
     public function boot(): void
