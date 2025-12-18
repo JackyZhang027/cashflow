@@ -55,16 +55,8 @@ class Transaction extends Model
          * UPDATE
          */
         static::updating(function ($transaction) {
-
-            // 1️⃣ Branch changed → FULL regenerate
-            if ($transaction->isDirty('branch_id')) {
+            if ($transaction->isDirty('branch_id') || $transaction->isDirty('transaction_date') || $transaction->isDirty('type') || $transaction->isDirty('currency_id')) {
                 $transaction->reference = $transaction->generateReference();
-                return;
-            }
-
-            // 2️⃣ Currency changed → replace currency only
-            if ($transaction->isDirty('currency_id')) {
-                $transaction->reference = $transaction->replaceCurrencyInReference();
                 return;
             }
         });
@@ -107,22 +99,6 @@ class Transaction extends Model
                 str_pad($seq, 3, '0', STR_PAD_LEFT)
             );
         });
-    }
-
-    
-    protected function replaceCurrencyInReference(): string
-    {
-        $oldRef = $this->getOriginal('reference');
-
-        if (! $oldRef) {
-            return $this->generateReference();
-        }
-
-        // Remove leading letters until first non-letter
-        // (works for USD, USDT, IDR, etc)
-        $suffix = preg_replace('/^[A-Z]+/i', '', $oldRef);
-
-        return ($this->currency?->code ?? 'XX') . $suffix;
     }
 
 
