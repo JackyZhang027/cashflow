@@ -90,7 +90,8 @@ class Transaction extends Model
                 $typeFlag
             );
 
-            $last = self::where('reference', 'like', '%'.$basePrefix.'%')
+            $last = self::withTrashed() // 👈 IMPORTANT
+                ->where('reference', 'like', '%' . $basePrefix . '%')
                 ->lockForUpdate()
                 ->orderByDesc('reference')
                 ->first();
@@ -107,6 +108,7 @@ class Transaction extends Model
             );
         });
     }
+
     
     protected function replaceCurrencyInReference(): string
     {
