@@ -2,10 +2,16 @@ import React, { useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import StatusBadge from '@/components/status-badge';
+import useMoneyFormatter from '@/hooks/use-money-formatter';
 
 export default function Approve({ transfer }: any) {
     const { errors, flash } = usePage().props as any;
     const [processing, setProcessing] = useState(false);
+
+    const { format } = useMoneyFormatter();
+    const formatMoney = (amount: number) => {
+        return format(amount);
+    }
 
     const approve = () => {
         if (processing) return;
@@ -48,9 +54,6 @@ export default function Approve({ transfer }: any) {
                     <h1 className="text-xl font-semibold">Branch Transfer Approval</h1>
                     <div className="text-sm font-medium text-gray-700">
                         From: {transfer.from_branch.code} → To: {transfer.to_branch.code}
-                    </div>
-                    <div className="text-sm text-gray-500">
-                        Ref: {transfer.reference}
                     </div>
                 </div>
 
@@ -117,9 +120,7 @@ export default function Approve({ transfer }: any) {
                 <Detail
                     label="Total Amount"
                     value={
-                        transfer.currency.symbol +
-                        ' ' +
-                        new Intl.NumberFormat('id-ID').format(transfer.total_amount)
+                        transfer.currency.symbol + ' ' + format(transfer.amount)
                     }
                 />
 
@@ -147,11 +148,11 @@ export default function Approve({ transfer }: any) {
                         {transfer.transactions.map((tx: any) => (
                             <tr key={tx.id}>
                                 <td className="border px-3 py-2 font-mono">
-                                    {tx.reference}
+                                    {tx.full_reference}
                                 </td>
                                 <td className="border px-3 py-2 text-right">
                                     {transfer.currency.symbol}{' '}
-                                    {new Intl.NumberFormat('id-ID').format(tx.amount)}
+                                    {formatMoney(tx.amount)}
                                 </td>
                                 <td className="border px-3 py-2">
                                     {tx.description ?? '-'}

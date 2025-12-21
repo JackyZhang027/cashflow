@@ -204,4 +204,9 @@ class Transaction extends Model
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
+
+    public function branchTransfer()
+    {
+        return $this->belongsTo(BranchTransfer::class, 'branch_transfer_id');
+    }
 }

@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\Branch;
 use App\Models\Currency;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+
 
 class TransactionController extends Controller
 {
@@ -183,25 +185,65 @@ class TransactionController extends Controller
     public function approve(Transaction $transaction, Request $request)
     {
         $this->authorize('approve', $transaction);
+
         if ($request->user()->cannot('update', $transaction)) {
-            return redirect()->back()->withErrors([
+            return back()->withErrors([
                 'error' => 'This transaction belongs to a CLOSED accounting period and cannot be approved.',
             ]);
         }
 
-        
         if ($transaction->status !== 'pending') {
-            return back()->with('error', 'Transaction already processed.');
+            return back()->withErrors([
+                'error' => 'Transaction already processed.',
+            ]);
         }
 
-        $transaction->update([
-            'status'       => 'approved',
-            'approved_at'  => now(),
-            'approved_by'  => Auth::id(),
-        ]);
+        DB::transaction(function () use ($transaction) {
+
+            // Transfer transaction → approve all linked transactions
+            if ($transaction->branch_transfer_id) {
+
+                $transactions = Transaction::where(
+                        'branch_transfer_id',
+                        $transaction->branch_transfer_id
+                    )
+                    ->lockForUpdate()
+                    ->get();
+
+                // Safety check (no partial approval)
+                if ($transactions->contains(fn ($tx) => $tx->status !== 'pending')) {
+                    throw new \Exception(
+                        'One or more transactions in this transfer already processed.'
+                    );
+                }
+
+                foreach ($transactions as $tx) {
+                    $tx->update([
+                        'status'      => 'approved',
+                        'approved_at' => now(),
+                        'approved_by' => Auth::id(),
+                    ]);
+                }
+                $transfer = $transaction->branchTransfer;
+                $transfer->update([
+                    'status'      => 'approved',
+                    'approved_at' => now(),
+                    'approved_by' => Auth::id(),
+                ]);
+
+            } else {
+                // Normal transaction
+                $transaction->update([
+                    'status'      => 'approved',
+                    'approved_at' => now(),
+                    'approved_by' => Auth::id(),
+                ]);
+            }
+        });
 
         return back()->with('success', 'Transaction approved.');
     }
+
 
     public function reject(Transaction $transaction)
     {
