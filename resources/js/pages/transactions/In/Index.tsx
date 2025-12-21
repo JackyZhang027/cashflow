@@ -36,7 +36,7 @@ function Index({ data, search, branches, currencies }: any) {
                 initialSearch={search}
                 columns={[
                     { key: 'transaction_date', label: 'Date' },
-                    { key: 'reference', label: 'Ref' },
+                    { key: 'full_reference', label: 'Ref' },
                     { key: 'branch.name', label: 'Branch' },
                     { key: 'currency.code', label: 'Currency' },
                     { key: 'amount', label: 'Amount', data_type: 'currency' },

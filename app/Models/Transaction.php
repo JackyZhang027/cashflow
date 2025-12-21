@@ -38,7 +38,7 @@ class Transaction extends Model
      *
      * @var array
      */
-    protected $appends = ['amount_in_words'];
+    protected $appends = ['amount_in_words', 'full_reference'];
 
     protected static function booted()
     {
@@ -50,16 +50,6 @@ class Transaction extends Model
                 $transaction->reference = $transaction->generateReference();
             }
         });
-
-        /**
-         * UPDATE
-         */
-        static::updating(function ($transaction) {
-            if ($transaction->isDirty('branch_id') || $transaction->isDirty('transaction_date') || $transaction->isDirty('type') || $transaction->isDirty('currency_id')) {
-                $transaction->reference = $transaction->generateReference();
-                return;
-            }
-        });
     }
 
     protected function generateReference(): string
@@ -69,39 +59,41 @@ class Transaction extends Model
             $date  = Carbon::parse($this->transaction_date);
             $year  = $date->format('y');
             $month = $date->format('m');
+
+            // 1 = in, 0 = out
             $typeFlag = $this->type === 'in' ? '1' : '0';
 
-            $branch = $this->branch()->lockForUpdate()->first();
+            $prefix = "{$year}{$month}{$typeFlag}";
+            $prefixLength = strlen($prefix);
 
-            // Sequence ignores currency
-            $basePrefix = sprintf(
-                '%s%s%s%s',
-                $branch->code,
-                $year,
-                $month,
-                $typeFlag
-            );
-
-            $last = self::withTrashed() // 👈 IMPORTANT
-                ->where('reference', 'like', '%' . $basePrefix . '%')
+            $last = self::withTrashed()
+                ->where('reference', 'like', "{$prefix}%")
                 ->lockForUpdate()
+                ->orderByDesc(DB::raw('LENGTH(reference)'))
                 ->orderByDesc('reference')
                 ->first();
 
-            $seq = $last
-                ? intval(substr($last->reference, -3)) + 1
-                : 1;
+            $seq = 1;
 
-            return sprintf(
-                '%s%s%s',
-                $this->currency?->code ?? 'XX',
-                $basePrefix,
-                str_pad($seq, 3, '0', STR_PAD_LEFT)
-            );
+            if ($last) {
+                // extract numeric part AFTER prefix
+                $lastSeq = (int) substr($last->reference, $prefixLength);
+                $seq = $lastSeq + 1;
+            }
+
+            // pad ONLY if less than 100
+            $seqPart = $seq < 100
+                ? str_pad($seq, 3, '0', STR_PAD_LEFT)
+                : (string) $seq;
+
+            return $prefix . $seqPart;
         });
     }
 
 
+    /**
+     * Get the amount in Indonesian words
+     */
     private function currencyWord(): string
     {
         return match ($this->currency?->code) {
@@ -185,6 +177,17 @@ class Transaction extends Model
 
         return trim($result);
     }
+
+    public function getFullReferenceAttribute(): string
+    {
+        return sprintf(
+            '%s%s%s',
+            $this->currency?->code ?? 'XX',
+            $this->branch?->code ?? 'XXX',
+            $this->reference
+        );
+    }
+
 
 
     public function branch()

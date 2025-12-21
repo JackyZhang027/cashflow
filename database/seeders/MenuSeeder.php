@@ -104,6 +104,15 @@ class MenuSeeder extends Seeder
             ]
         );
 
+        Menu::updateOrCreate(
+            ['title' => 'Role', 'parent_id' => $access->id, 'route' => '/roles'],
+            [
+                'icon' => 'AlertTriangle',
+                'order' => 2,
+                'permission_name' => 'roles-view',
+            ]
+        );
+        
         /* ======================
            SETTINGS
         ====================== */

@@ -213,7 +213,17 @@ class TransactionController extends Controller
             'reference' => 'required|string',
         ]);
 
-        $transaction = Transaction::where('reference', $request->reference)->first();
+        $input = trim(preg_replace('/[\r\n\t]+/', '', $request->reference));
+
+        $transaction = Transaction::query()
+            ->join('branches', 'branches.id', '=', 'transactions.branch_id')
+            ->join('currencies', 'currencies.id', '=', 'transactions.currency_id')
+            ->whereRaw(
+                "CONCAT(currencies.code, branches.code, transactions.reference) = ?",
+                [$input]
+            )
+            ->select('transactions.*')
+            ->first();
 
         if (! $transaction) {
             return back()->with('error', 'Transaction not found');

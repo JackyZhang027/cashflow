@@ -33,7 +33,7 @@ export default function Approve({ transaction }: any) {
                         Type: Cash {transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
                     </div>
                     <div className="text-sm text-gray-500">
-                        Ref: {transaction.reference}
+                        Ref: {transaction.full_reference}
                     </div>
                 </div>
 
