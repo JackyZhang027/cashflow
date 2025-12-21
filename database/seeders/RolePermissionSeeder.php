@@ -42,6 +42,11 @@ class RolePermissionSeeder extends Seeder
                 'delete-transaction',
                 'scan-transaction-view',
             ],
+            'Reports' => [
+                'reports-view',
+                'balance-summary-view',
+                'daily-report-view'
+            ],
             'Settings' => [
                 'settings-view',
                 'menu-view',

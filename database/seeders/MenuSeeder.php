@@ -83,6 +83,36 @@ class MenuSeeder extends Seeder
         );
 
         /* ======================
+           REPORTS
+        ====================== */
+        $reports = Menu::updateOrCreate(
+            ['title' => 'Reports', 'parent_id' => null, 'route' => '#'],
+            [
+                'icon' => 'BarChart2',
+                'order' => 3,
+                'permission_name' => 'reports-view',
+            ]
+        );
+
+        Menu::updateOrCreate(
+            ['title' => 'Balance Summary', 'parent_id' => $reports->id, 'route' => '/reports/balance-summary'],
+            [
+                'icon' => 'FileText',
+                'order' => 1,
+                'permission_name' => 'balance-summary-view',
+            ]
+        );
+
+        Menu::updateOrCreate(
+            ['title' => 'Daily Report', 'parent_id' => $reports->id, 'route' => '/reports/daily-report'],
+            [
+                'icon' => 'Calendar',
+                'order' => 2,
+                'permission_name' => 'daily-report-view',
+            ]
+        );
+
+        /* ======================
            ACCESS
         ====================== */
 
@@ -105,7 +135,7 @@ class MenuSeeder extends Seeder
         );
 
         Menu::updateOrCreate(
-            ['title' => 'Role', 'parent_id' => $access->id, 'route' => '/roles'],
+            ['title' => 'Roles', 'parent_id' => $access->id, 'route' => '/roles'],
             [
                 'icon' => 'AlertTriangle',
                 'order' => 2,

@@ -15,6 +15,8 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CurrencyController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\BranchOpeningBalanceController;
+use App\Http\Controllers\Reports\BalanceSummaryController;
+use App\Http\Controllers\Reports\DailyReportController;
 
 Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::get('/', function () {
@@ -69,24 +71,38 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
 
         Route::get('/print', [TransactionController::class, 'print'])->name('transactions.print');
 
-        Route::prefix('transactions/{transaction}/approval')
-            ->group(function () {
-                Route::post('approve', [TransactionController::class, 'approve'])
-                    ->name('transactions.approval.approve')
-                    ->middleware('can:approve-transaction');;
+        Route::prefix('transactions/{transaction}/approval')->group(function () {
+            Route::post('approve', [TransactionController::class, 'approve'])
+                ->name('transactions.approval.approve')
+                ->middleware('can:approve-transaction');;
 
-                Route::post('reject', [TransactionController::class, 'reject'])
-                    ->name('transactions.approval.reject')
-                    ->middleware('can:approve-transaction');;
-            });
-
+            Route::post('reject', [TransactionController::class, 'reject'])
+                ->name('transactions.approval.reject')
+                ->middleware('can:approve-transaction');;
         });
-        Route::get('/transactions/scan', function () {
-            return Inertia::render('transactions/ScanApproval');
-        })->name('transactions.approval.scan.form');
 
-        Route::post('/transactions/approval/scan', [TransactionController::class, 'scan'])
-            ->name('transactions.approval.scan');
+    });
+
+    Route::get('/transactions/scan', function () {
+        return Inertia::render('transactions/ScanApproval');
+    })->name('transactions.approval.scan.form');
+
+    Route::post('/transactions/approval/scan', [TransactionController::class, 'scan'])
+        ->name('transactions.approval.scan');
+
+    // Reports
+    Route::get('/reports/balance-summary', [BalanceSummaryController::class, 'index'])
+        ->name('reports.balance-summary');
+
+    Route::get('/reports/balance-summary/pdf', [BalanceSummaryController::class, 'exportPdf'])
+        ->name('reports.balance-summary.pdf');
+
+    Route::get('/reports/daily-report', [DailyReportController::class, 'index'])
+        ->name('reports.daily');
+    
+    Route::get('/reports/daily/pdf', [DailyReportController::class, 'pdf'])
+        ->name('reports.daily.pdf');
+
 
 });
 
