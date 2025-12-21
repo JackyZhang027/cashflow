@@ -9,7 +9,9 @@ const STATUS_STYLES: Record<string, string> = {
     approved: 'bg-green-100 text-green-800 border-green-300',
     rejected: 'bg-red-100 text-red-800 border-red-300',
     active: 'bg-green-100 text-green-800 border-green-300',
-    inactive: 'bg-green-100 text-green-800 border-green-300',
+    inactive: 'bg-red-100 text-red-800 border-red-300',
+    open: 'bg-red-100 text-red-800 border-red-300',
+    closed: 'bg-green-100 text-green-800 border-green-300',
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -18,6 +20,8 @@ const STATUS_LABELS: Record<string, string> = {
     rejected: 'Rejected',
     active: 'Active',
     inactive: 'Inactive',
+    open: 'Open',
+    closed: 'Closed',
 };
 
 export default function StatusBadge({ status }: Props) {

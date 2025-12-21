@@ -96,6 +96,13 @@ class TransactionController extends Controller
      * ================================ */
     public function update(Request $request, Transaction $transaction)
     {
+        if ($request->user()->cannot('update', $transaction)) {
+            return redirect()->back()->withErrors([
+                'error' => 'This transaction belongs to a CLOSED accounting period and cannot be edited.',
+            ]);
+        }
+
+
         if ($transaction->is_approved) {
             abort(403, 'Approved transaction cannot be edited');
         }
@@ -173,10 +180,16 @@ class TransactionController extends Controller
             ->header('X-Inertia', 'false');
     }
 
-    public function approve(Transaction $transaction)
+    public function approve(Transaction $transaction, Request $request)
     {
         $this->authorize('approve', $transaction);
+        if ($request->user()->cannot('update', $transaction)) {
+            return redirect()->back()->withErrors([
+                'error' => 'This transaction belongs to a CLOSED accounting period and cannot be approved.',
+            ]);
+        }
 
+        
         if ($transaction->status !== 'pending') {
             return back()->with('error', 'Transaction already processed.');
         }

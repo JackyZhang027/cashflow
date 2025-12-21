@@ -20,10 +20,18 @@ export default function TransactionFormModal({
     onClose,
 }: Props) {
     const isEdit = Boolean(transaction?.id);
-
     const today = new Date().toISOString().split('T')[0];
 
-    const { data, setData, post, put, processing, reset } = useForm({
+    const {
+        data,
+        setData,
+        post,
+        put,
+        processing,
+        errors,
+        clearErrors,
+        reset,
+    } = useForm({
         reference: '',
         branch_id: '',
         currency_id: '',
@@ -37,6 +45,8 @@ export default function TransactionFormModal({
     useEffect(() => {
         if (!show) return;
 
+        clearErrors();
+
         if (transaction) {
             setData({
                 reference: transaction.reference || '',
@@ -49,36 +59,28 @@ export default function TransactionFormModal({
                 actor_name: transaction.actor_name || '',
             });
         } else {
-            setData({
-                reference: '',
-                branch_id: '',
-                currency_id: '',
-                transaction_date: today,
-                type,
-                amount: '',
-                description: '',
-                actor_name: '',
-            });
+            reset();
         }
     }, [show, transaction, type]);
-
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        const options = {
+        const action = isEdit
+            ? put(route('transactions.update', transaction.id))
+            : post(route('transactions.store'));
+
+        action({
+            preserveScroll: true,
             onSuccess: () => {
                 reset();
                 onClose();
             },
-        };
-
-        if (isEdit) {
-            put(route('transactions.update', transaction.id), options);
-        } else {
-            post(route('transactions.store'), options);
-        }
+        });
     };
+
+    const ErrorText = ({ message }: { message?: string }) =>
+        message ? <p className="mt-1 text-sm text-red-600">{message}</p> : null;
 
     return (
         <Modal
@@ -87,78 +89,109 @@ export default function TransactionFormModal({
             onClose={onClose}
         >
             <form onSubmit={submit} className="space-y-4">
+
+                {/* GLOBAL ERROR (business rules) */}
+                {errors?.error && (
+                    <div className="rounded bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                        {errors.error}
+                    </div>
+                )}
+
                 {/* Branch */}
-                Branch
-                <select
-                    name='branch_id'
-                    className="w-full border rounded px-3 py-2"
-                    value={data.branch_id}
-                    onChange={e => setData('branch_id', e.target.value)}
-                    required
-                >
-                    <option value="">Select Branch</option>
-                    {branches.map(b => (
-                        <option key={b.id} value={b.id}>
-                            {b.name}
-                        </option>
-                    ))}
-                </select>
+                <div>
+                    <label className="block text-sm font-medium">Branch</label>
+                    <select
+                        className={`w-full border rounded px-3 py-2 ${
+                            errors.branch_id ? 'border-red-500' : ''
+                        }`}
+                        value={data.branch_id}
+                        onChange={e => setData('branch_id', e.target.value)}
+                    >
+                        <option value="">Select Branch</option>
+                        {branches.map(b => (
+                            <option key={b.id} value={b.id}>
+                                {b.name}
+                            </option>
+                        ))}
+                    </select>
+                    <ErrorText message={errors.branch_id} />
+                </div>
 
                 {/* Currency */}
-                Currency
-                <select
-                    className="w-full border rounded px-3 py-2"
-                    value={data.currency_id}
-                    onChange={e => setData('currency_id', e.target.value)}
-                    required
-                >
-                    <option value="">Select Currency</option>
-                    {currencies.map(c => (
-                        <option key={c.id} value={c.id}>
-                            {c.code}
-                        </option>
-                    ))}
-                </select>
+                <div>
+                    <label className="block text-sm font-medium">Currency</label>
+                    <select
+                        className={`w-full border rounded px-3 py-2 ${
+                            errors.currency_id ? 'border-red-500' : ''
+                        }`}
+                        value={data.currency_id}
+                        onChange={e => setData('currency_id', e.target.value)}
+                    >
+                        <option value="">Select Currency</option>
+                        {currencies.map(c => (
+                            <option key={c.id} value={c.id}>
+                                {c.code}
+                            </option>
+                        ))}
+                    </select>
+                    <ErrorText message={errors.currency_id} />
+                </div>
 
-                {/* Date (Today, Read Only) */}
-                Transaction Date
-                <input
-                    type="date"
-                    className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
-                    value={data.transaction_date}
-                    disabled
-                />
+                {/* Transaction Date */}
+                <div>
+                    <label className="block text-sm font-medium">Transaction Date</label>
+                    <input
+                        type="date"
+                        className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+                        value={data.transaction_date}
+                        disabled
+                    />
+                </div>
 
                 {/* Amount */}
-                Amount
-                <input
-                    type="number"
-                    step="0.01"
-                    className="w-full border rounded px-3 py-2"
-                    value={data.amount}
-                    onChange={e => setData('amount', e.target.value)}
-                    placeholder="Amount"
-                    required
-                />
+                <div>
+                    <label className="block text-sm font-medium">Amount</label>
+                    <input
+                        type="number"
+                        step="0.01"
+                        className={`w-full border rounded px-3 py-2 ${
+                            errors.amount ? 'border-red-500' : ''
+                        }`}
+                        value={data.amount}
+                        onChange={e => setData('amount', e.target.value)}
+                    />
+                    <ErrorText message={errors.amount} />
+                </div>
 
                 {/* Actor */}
-                {type === 'in' ? 'Penyetor' : 'Pemohon'}
-                <input
-                    className="w-full border rounded px-3 py-2"
-                    placeholder={type === 'in' ? 'Penyetor' : 'Pemohon'}
-                    value={data.actor_name}
-                    onChange={e => setData('actor_name', e.target.value)}
-                />
+                <div>
+                    <label className="block text-sm font-medium">
+                        {type === 'in' ? 'Penyetor' : 'Pemohon'}
+                    </label>
+                    <input
+                        className={`w-full border rounded px-3 py-2 ${
+                            errors.actor_name ? 'border-red-500' : ''
+                        }`}
+                        value={data.actor_name}
+                        onChange={e => setData('actor_name', e.target.value)}
+                    />
+                    <ErrorText message={errors.actor_name} />
+                </div>
 
                 {/* Description */}
-                Description
-                <textarea
-                    className="w-full border rounded px-3 py-2"
-                    placeholder="Description"
-                    value={data.description}
-                    onChange={e => setData('description', e.target.value)}
-                />
+                <div>
+                    <label className="block text-sm font-medium">Description</label>
+                    <textarea
+                        className={`w-full border rounded px-3 py-2 ${
+                            errors.description ? 'border-red-500' : ''
+                        }`}
+                        value={data.description}
+                        onChange={e => setData('description', e.target.value)}
+                    />
+                    <ErrorText message={errors.description} />
+                </div>
 
+                {/* Actions */}
                 <div className="flex justify-end gap-2 pt-2">
                     <button
                         type="button"

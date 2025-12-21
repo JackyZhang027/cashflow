@@ -25,6 +25,15 @@ class MenuSeeder extends Seeder
         );
 
         Menu::updateOrCreate(
+            ['title' => 'Periods', 'parent_id' => $master->id, 'route' => '/periods'],
+            [
+                'icon' => 'Clock',
+                'order' => 0,
+                'permission_name' => 'periods-view',
+            ]
+        );
+
+        Menu::updateOrCreate(
             ['title' => 'Branches', 'parent_id' => $master->id, 'route' => '/branches'],
             [
                 'icon' => 'MapPin',

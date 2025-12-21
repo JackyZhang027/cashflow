@@ -30,6 +30,7 @@ class RolePermissionSeeder extends Seeder
                 'master-view',
                 'branches-view',
                 'currencies-view',
+                'periods-view',
             ],
             'Transactions' => [
                 'transaction-view',

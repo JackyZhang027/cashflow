@@ -1,26 +1,43 @@
-import React from 'react';
-import { router } from '@inertiajs/react';
+import React, { useState } from 'react';
+import { router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import StatusBadge from '@/components/status-badge';
 
 export default function Approve({ transaction }: any) {
+    const { errors, flash } = usePage().props as any;
+    const [processing, setProcessing] = useState(false);
 
     const approve = () => {
+        if (processing) return;
         if (!confirm('Approve this transaction?')) return;
 
+        setProcessing(true);
+
         router.post(
-            route('transactions.approval.approve', transaction.id)
+            route('transactions.approval.approve', transaction.id),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setProcessing(false),
+            }
         );
     };
 
     const reject = () => {
+        if (processing) return;
         if (!confirm('Reject this transaction?')) return;
 
+        setProcessing(true);
+
         router.post(
-            route('transactions.approval.reject', transaction.id)
+            route('transactions.approval.reject', transaction.id),
+            {},
+            {
+                preserveScroll: true,
+                onFinish: () => setProcessing(false),
+            }
         );
     };
-
 
     return (
         <div className="space-y-6 p-4">
@@ -40,24 +57,48 @@ export default function Approve({ transaction }: any) {
                 <StatusBadge status={transaction.status} />
             </div>
 
+            {/* GLOBAL ERROR */}
+            {errors?.error && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
+                    {errors.error}
+                </div>
+            )}
+
+            {/* FLASH SUCCESS */}
+            {flash?.success && (
+                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm text-green-700">
+                    {flash.success}
+                </div>
+            )}
+
+            {/* Actions */}
             {transaction.status === 'pending' && (
                 <div className="flex justify-start gap-3 border rounded-xl p-4 bg-gray-50">
                     <button
                         onClick={approve}
-                        className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 cursor-pointer"
+                        disabled={processing}
+                        className={`px-4 py-2 rounded-lg text-white
+                            ${processing
+                                ? 'bg-green-300 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-700'}
+                        `}
                     >
-                        Approve
+                        {processing ? 'Processing...' : 'Approve'}
                     </button>
 
                     <button
                         onClick={reject}
-                        className="px-4 py-2 rounded-lg border border-red-500 text-red-600 hover:bg-red-50 cursor-pointer"
+                        disabled={processing}
+                        className={`px-4 py-2 rounded-lg border
+                            ${processing
+                                ? 'border-red-300 text-red-300 cursor-not-allowed'
+                                : 'border-red-500 text-red-600 hover:bg-red-50'}
+                        `}
                     >
                         Reject
                     </button>
                 </div>
             )}
-
 
             {/* Transaction Details */}
             <div className="bg-white border rounded-xl p-6 grid grid-cols-2 gap-6">
@@ -66,10 +107,15 @@ export default function Approve({ transaction }: any) {
                 <Detail label="Currency" value={transaction.currency.code} />
                 <Detail
                     label="Amount"
-                    value={transaction.currency.symbol + " " + new Intl.NumberFormat('id-ID').format(transaction.amount)}
+                    value={
+                        transaction.currency.symbol +
+                        ' ' +
+                        new Intl.NumberFormat('id-ID').format(transaction.amount)
+                    }
                 />
                 <Detail label="Penyetor" value={transaction.actor_name} />
                 <Detail label="Description" value={transaction.description ?? '-'} />
+
                 {transaction.status === 'approved' && (
                     <>
                         <Detail label="Approved By" value={transaction.approver.name} />

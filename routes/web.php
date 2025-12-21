@@ -17,6 +17,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\BranchOpeningBalanceController;
 use App\Http\Controllers\Reports\BalanceSummaryController;
 use App\Http\Controllers\Reports\DailyReportController;
+use App\Http\Controllers\AccountPeriodController;
 
 Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::get('/', function () {
@@ -46,6 +47,11 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::post('/branches/bulk-activate', [BranchController::class, 'bulkActivate'])->name('branches.bulk-activate');
     Route::post('/branches/bulk-deactivate', [BranchController::class, 'bulkDeactivate'])->name('branches.bulk-deactivate');
     Route::resource('branches', BranchController::class);
+
+    //Periods
+    Route::post('/periods/bulk-delete', [AccountPeriodController::class, 'bulkDelete'])->name('periods.bulk-delete');
+    Route::post('/periods/bulk-activate', [AccountPeriodController::class, 'bulkActivate'])->name('periods.bulk-activate');
+    Route::resource('periods', AccountPeriodController::class);
 
     //Currencies
     Route::post('/currencies/bulk-delete', [CurrencyController::class, 'bulkDelete'])->name('currencies.bulk-delete');
@@ -102,7 +108,7 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
     
     Route::get('/reports/daily/pdf', [DailyReportController::class, 'pdf'])
         ->name('reports.daily.pdf');
-
+    
 
 });
 
