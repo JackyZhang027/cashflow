@@ -74,6 +74,15 @@ class MenuSeeder extends Seeder
         );
 
         Menu::updateOrCreate(
+            ['title' => 'Branch Transfer', 'parent_id' => $transaction->id, 'route' => '/transactions/transfers'],
+            [
+                'icon' => 'Repeat',
+                'order' => 1,
+                'permission_name' => 'transaction-transfer-view',
+            ]
+        );
+
+        Menu::updateOrCreate(
             ['title' => 'Cash In', 'parent_id' => $transaction->id, 'route' => '/transactions/in'],
             [
                 'icon' => 'ArrowUpCircle',

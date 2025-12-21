@@ -42,6 +42,8 @@ class RolePermissionSeeder extends Seeder
                 'edit-transaction',
                 'delete-transaction',
                 'scan-transaction-view',
+                'transaction-transfer-view',
+                'approve-branch-transfer',
             ],
             'Reports' => [
                 'reports-view',

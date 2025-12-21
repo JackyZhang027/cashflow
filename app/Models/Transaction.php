@@ -27,6 +27,7 @@ class Transaction extends Model
         'created_by',
         'updated_by',
         'deleted_by',
+        'branch_transfer_id',
     ];
     
     protected $casts = [

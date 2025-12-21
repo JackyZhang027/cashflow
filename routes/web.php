@@ -18,6 +18,7 @@ use App\Http\Controllers\BranchOpeningBalanceController;
 use App\Http\Controllers\Reports\BalanceSummaryController;
 use App\Http\Controllers\Reports\DailyReportController;
 use App\Http\Controllers\AccountPeriodController;
+use App\Http\Controllers\BranchTransferController;
 
 Route::middleware(['auth', 'menu.permission'])->group(function () {
     Route::get('/', function () {
@@ -67,17 +68,18 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
 
         Route::get('in', [TransactionController::class, 'in'])->name('transactions.in.index');
         Route::get('out', [TransactionController::class, 'out'])->name('transactions.out.index');
+        Route::resource('transfers', BranchTransferController::class);
 
         Route::post('/', [TransactionController::class, 'store'])->name('transactions.store');
         Route::put('{transaction}', [TransactionController::class, 'update'])->name('transactions.update');
         Route::delete('{transaction}', [TransactionController::class, 'destroy'])->name('transactions.destroy');
-        Route::get('/transactions/{transaction}/approval', [TransactionController::class, 'show'])
+        Route::get('/{transaction}/approval', [TransactionController::class, 'show'])
             ->name('transactions.approval.show')
             ->middleware('can:approve-transaction');
 
         Route::get('/print', [TransactionController::class, 'print'])->name('transactions.print');
 
-        Route::prefix('transactions/{transaction}/approval')->group(function () {
+        Route::prefix('{transaction}/approval')->group(function () {
             Route::post('approve', [TransactionController::class, 'approve'])
                 ->name('transactions.approval.approve')
                 ->middleware('can:approve-transaction');;
@@ -86,6 +88,20 @@ Route::middleware(['auth', 'menu.permission'])->group(function () {
                 ->name('transactions.approval.reject')
                 ->middleware('can:approve-transaction');;
         });
+        Route::get('/{transfer}/approval/transfer', [BranchTransferController::class, 'show'])
+            ->name('transactions.approval.transfer.show')
+            ->middleware('can:approve-transaction');
+        
+        Route::prefix('{transaction}/approval/transfer')->group(function () {
+            Route::post('approve', [BranchTransferController::class, 'approve'])
+                ->name('transactions.approval.transfer.approve')
+                ->middleware('can:approve-transaction');;
+
+            Route::post('reject', [BranchTransferController::class, 'reject'])
+                ->name('transactions.approval.transfer.reject')
+                ->middleware('can:approve-transaction');;
+        });
+
 
     });
 
