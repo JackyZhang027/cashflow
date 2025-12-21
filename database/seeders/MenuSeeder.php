@@ -160,7 +160,15 @@ class MenuSeeder extends Seeder
                 'permission_name' => 'roles-view',
             ]
         );
-        
+
+        Menu::updateOrCreate(
+            ['title' => 'Activity Logs', 'parent_id' => $access->id, 'route' => '/audit-logs'],
+            [
+                'icon' => 'Activity',
+                'order' => 4,
+                'permission_name' => 'log-view',
+            ]
+        );
         /* ======================
            SETTINGS
         ====================== */
