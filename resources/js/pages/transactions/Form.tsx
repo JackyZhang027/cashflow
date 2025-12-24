@@ -144,7 +144,6 @@ export default function TransactionFormModal({
                         type="date"
                         className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
                         value={data.transaction_date}
-                        disabled
                     />
                 </div>
 
