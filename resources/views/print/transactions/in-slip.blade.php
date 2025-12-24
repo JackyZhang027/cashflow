@@ -104,10 +104,20 @@
             width: 120px;
             margin-top: 52px;
         }
+        @page {
+            size: A4;
+            margin: 10mm;
+        }
 
         @media print {
             body {
                 margin: 0;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .page {
+                page-break-after: always;
             }
         }
     </style>

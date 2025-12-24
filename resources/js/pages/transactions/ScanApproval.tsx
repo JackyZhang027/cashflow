@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { ScanLine } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 
 export default function ScanApproval() {
     const { flash } = usePage().props as any;
+    const inputRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        inputRef.current?.focus();
+        setReference('');
+    }, [flash?.error, flash?.result]);
+
+
 
     const [reference, setReference] = useState('');
     const [loading, setLoading] = useState(false);
@@ -19,10 +26,12 @@ export default function ScanApproval() {
             route('transactions.approval.scan'),
             { reference },
             {
+                preserveScroll: true,
                 onFinish: () => setLoading(false),
             }
         );
     };
+
 
     return (
         <div className="min-h-[70vh] flex items-center justify-center p-6">
@@ -44,13 +53,14 @@ export default function ScanApproval() {
                 {/* Form */}
                 <form onSubmit={submit} className="space-y-4">
                     <input
-                        autoFocus
+                        ref={inputRef}
                         value={reference}
                         onChange={(e) => setReference(e.target.value)}
                         placeholder="e.g. IDRBR2403010001"
                         className="w-full h-14 px-4 text-lg tracking-wide border rounded-xl
-                                   focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
+
 
                     <button
                         type="submit"
@@ -67,6 +77,13 @@ export default function ScanApproval() {
                 {flash?.error && (
                     <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
                         {flash.error}
+                    </div>
+                )}
+
+                {/* Success */}
+                {flash?.result && (
+                    <div className="rounded-xl border bg-green-50 p-4 text-sm">
+                        Transaction <strong>{flash.result.reference}</strong> (Cash {flash.result.type.toUpperCase()}) with amount {flash.result.amount.toLocaleString()} is approved.
                     </div>
                 )}
 

@@ -106,7 +106,9 @@ class TransactionController extends Controller
 
 
         if ($transaction->is_approved) {
-            abort(403, 'Approved transaction cannot be edited');
+            return redirect()->back()->withErrors([
+                'error' => 'Approved transaction cannot be edited.',
+            ]);
         }
 
         $data = $this->validatedData($request, true);
@@ -125,7 +127,9 @@ class TransactionController extends Controller
     public function destroy(Transaction $transaction)
     {
         if ($transaction->is_approved) {
-            abort(403, 'Approved transaction cannot be deleted');
+            return redirect()->back()->withErrors([
+                'error' => 'Approved transaction cannot be deleted.',
+            ]);
         }
 
         $transaction->update([
@@ -146,12 +150,13 @@ class TransactionController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'branch_id' => ['required', 'exists:branches,id'],
             'currency_id' => ['required', 'exists:currencies,id'],
-            'transaction_date' => ['required', 'date'],
+            'transaction_date' => ['required', 'date', 'after_or_equal:today'],
             'type' => ['required', 'in:in,out'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'description' => ['nullable', 'string'],
             'actor_name' => ['nullable', 'string', 'max:255'],
         ]);
+
     }
     /* ================================
      * PRINT TRANSACTION SLIP
@@ -240,8 +245,17 @@ class TransactionController extends Controller
                 ]);
             }
         });
+        
+        return back()->with([
+            'success' => 'Transaction approved',
+            'result' => [
+                'reference' => $transaction->full_reference,
+                'type'      => $transaction->type === 'in' ? 'In' : 'Out',
+                'amount'    => $transaction->amount,
+            ],
+        ]);
 
-        return back()->with('success', 'Transaction approved.');
+
     }
 
 
@@ -264,15 +278,13 @@ class TransactionController extends Controller
 
     public function scan(Request $request)
     {
-        $request->validate([
-            'reference' => 'required|string',
-        ]);
+        $request->validate(['reference' => 'required|string']);
 
         $input = trim(preg_replace('/[\r\n\t]+/', '', $request->reference));
 
         $transaction = Transaction::query()
-            ->join('branches', 'branches.id', '=', 'transactions.branch_id')
-            ->join('currencies', 'currencies.id', '=', 'transactions.currency_id')
+            ->join('branches', 'branches.id', 'transactions.branch_id')
+            ->join('currencies', 'currencies.id', 'transactions.currency_id')
             ->whereRaw(
                 "CONCAT(currencies.code, branches.code, transactions.reference) = ?",
                 [$input]
@@ -283,13 +295,14 @@ class TransactionController extends Controller
         if (! $transaction) {
             return back()->with('error', 'Transaction not found');
         }
-
         if ($transaction->status !== 'pending') {
-            return back()->with('error', 'Transaction is not pending approval');
+            return back()->with('error', 'Transaction already approved/rejected.');
         }
 
-        return redirect()->route('transactions.approval.show', $transaction);
+        return $this->approve($transaction, $request);
     }
+
+
 
 
 }

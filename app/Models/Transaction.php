@@ -57,39 +57,32 @@ class Transaction extends Model
     {
         return DB::transaction(function () {
 
-            $date  = Carbon::parse($this->transaction_date);
-            $year  = $date->format('y');
-            $month = $date->format('m');
-
-            // 1 = in, 0 = out
-            $typeFlag = $this->type === 'in' ? '1' : '0';
-
-            $prefix = "{$year}{$month}{$typeFlag}";
+            $date = Carbon::parse($this->transaction_date);
+            $prefix = $date->format('ym') . ($this->type === 'in' ? '1' : '0');
             $prefixLength = strlen($prefix);
 
-            $last = self::withTrashed()
-                ->where('reference', 'like', "{$prefix}%")
-                ->lockForUpdate()
-                ->orderByDesc(DB::raw('LENGTH(reference)'))
-                ->orderByDesc('reference')
-                ->first();
+            for ($i = 0; $i < 5; $i++) { // retry 5x
+                $last = self::withTrashed()
+                    ->where('reference', 'like', "{$prefix}%")
+                    ->lockForUpdate()
+                    ->orderByDesc(DB::raw('CAST(SUBSTRING(reference, '.$prefixLength.' + 1) AS UNSIGNED)'))
+                    ->first();
 
-            $seq = 1;
+                $seq = $last
+                    ? ((int) substr($last->reference, $prefixLength)) + 1
+                    : 1;
 
-            if ($last) {
-                // extract numeric part AFTER prefix
-                $lastSeq = (int) substr($last->reference, $prefixLength);
-                $seq = $lastSeq + 1;
+                $reference = $prefix . ($seq < 100 ? str_pad($seq, 3, '0', STR_PAD_LEFT) : $seq);
+
+                if (! self::withTrashed()->where('reference', $reference)->exists()) {
+                    return $reference;
+                }
             }
 
-            // pad ONLY if less than 100
-            $seqPart = $seq < 100
-                ? str_pad($seq, 3, '0', STR_PAD_LEFT)
-                : (string) $seq;
-
-            return $prefix . $seqPart;
+            throw new \RuntimeException('Failed to generate unique reference');
         });
     }
+
 
 
     /**
@@ -102,6 +95,7 @@ class Transaction extends Model
             'USD' => 'dolar',
             'SGD' => 'dolar singapura',
             'EUR' => 'euro',
+            'MYR' => 'ringgit malaysia',
             default => '',
         };
     }

@@ -66,6 +66,9 @@ function Index({ data, search, branches, currencies }: any) {
                             setSelected(row);
                             setShowModal(true);
                         },
+                        can: (row: any) =>
+                            row.status !== 'approved'
+
                     },
                     {
                         key: 'delete',
@@ -76,6 +79,8 @@ function Index({ data, search, branches, currencies }: any) {
                                 router.delete(route('transactions.destroy', row.id));
                             }
                         },
+                        can: (row: any) =>
+                            row.status !== 'approved'
                     },
                 ]}
                 bulkActions={[
