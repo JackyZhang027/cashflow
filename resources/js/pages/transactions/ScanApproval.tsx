@@ -2,7 +2,7 @@ import { router, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { ScanLine } from 'lucide-react';
 import React, { useState, useRef, useEffect } from 'react';
-
+import useMoneyFormatter from '@/hooks/use-money-formatter';
 export default function ScanApproval() {
     const { flash } = usePage().props as any;
     const inputRef = useRef<HTMLInputElement>(null);
@@ -11,6 +11,11 @@ export default function ScanApproval() {
         setReference('');
     }, [flash?.error, flash?.result]);
 
+    
+    const { format } = useMoneyFormatter();
+    const formatMoney = (amount: number) => {
+        return format(amount);
+    }
 
 
     const [reference, setReference] = useState('');
@@ -83,7 +88,7 @@ export default function ScanApproval() {
                 {/* Success */}
                 {flash?.result && (
                     <div className="rounded-xl border bg-green-50 p-4 text-sm">
-                        Transaction <strong>{flash.result.reference}</strong> (Cash {flash.result.type.toUpperCase()}) with amount {flash.result.amount.toLocaleString()} is approved.
+                        Transaction <strong>{flash.result.reference}</strong> (Cash {flash.result.type.toUpperCase()}) with amount {formatMoney(flash.result.amount)} is approved.
                     </div>
                 )}
 
