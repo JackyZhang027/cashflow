@@ -29,12 +29,25 @@ function Index({ data, search }: any) {
                 fetchUrl={route('currencies.index')}
                 initialSearch={search}
                 columns={[
-                    { key: 'code', label: 'Code' },
-                    { key: 'name', label: 'Name' },
-                    { key: 'symbol', label: 'Symbol' },
-                    { key: 'precision', label: 'Precision' },
-                    { key: 'status', label: 'Status' },
+                    { key: 'code', label: 'Code', sortable: true },
+                    { key: 'name', label: 'Name', sortable: true },
+                    { key: 'symbol', label: 'Symbol', sortable: true },
+                    { key: 'precision', label: 'Precision', sortable: true },
+                    { key: 'status', label: 'Status', sortable: true },
                 ]}
+                
+                filters={[
+                    {
+                        key: 'status',
+                        label: 'Status',
+                        type: 'select',
+                        options: [
+                            { label: 'Active', value: 'active' },
+                            { label: 'Inactive', value: 'inactive' },
+                        ],
+                    },
+                ]}
+
                 rowActions={[
                     {
                         key: 'edit',

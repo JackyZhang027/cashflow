@@ -30,13 +30,26 @@ function Index({ data, search }: any) {
                 fetchUrl={route('periods.index')}
                 initialSearch={search}
                 columns={[
-                    { key: 'name', label: 'Name' },
-                    { key: 'start_date', label: 'Start Date' },
-                    { key: 'end_date', label: 'End Date' },
+                    { key: 'name', label: 'Name', sortable: true, },
+                    { key: 'start_date', label: 'Start Date', sortable: true,  },
+                    { key: 'end_date', label: 'End Date', sortable: true,  },
                     {
                         key: 'status',
                         label: 'Status',
-                        render: value => <StatusBadge status={value} />,
+                        sortable: true, 
+                        render: value => <StatusBadge status={value}
+                         />,
+                    },
+                ]}
+                filters={[
+                    {
+                        key: 'status',
+                        label: 'Status',
+                        type: 'select',
+                        options: [
+                            { label: 'Open', value: 'open' },
+                            { label: 'Closed', value: 'closed' },
+                        ],
                     },
                 ]}
                 rowActions={[

@@ -16,11 +16,34 @@ class AccountPeriodController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $filters = $request->input('filters', []);
+        $sort = $request->input('sort');
+        $direction = $request->input('direction', 'asc');
 
         $data = AccountPeriod::query()
             ->when($search, fn ($q) =>
                 $q->where('name', 'like', "%{$search}%")
             )
+            
+            /* FILTER: STATUS */
+            ->when(
+                !empty($filters['status']),
+                fn ($q) => $q->where(
+                    'status',
+                    $filters['status']
+                )
+            )
+
+            /* SORT */
+            ->when($sort, function ($q) use ($sort, $direction) {
+                match ($sort) {
+                    'name', 'start_date', 'end_date', 'status' => $q->orderBy(
+                        $sort,
+                        $direction
+                    ),
+                    default => null,
+                };
+            })
             ->orderBy('start_date', 'desc')
             ->paginate(10)
             ->through(fn ($period) => [
@@ -58,7 +81,6 @@ class AccountPeriodController extends Controller
         ]);
 
         $this->ensureNoOverlap($validated['start_date'], $validated['end_date']);
-        $this->ensureSingleOpenPeriod($validated['status']);
 
         AccountPeriod::create($validated);
 
@@ -82,9 +104,6 @@ class AccountPeriodController extends Controller
             $validated['end_date'],
             $period->id
         );
-
-        $this->preventReopenIfNewerExists($period, $validated['status']);
-        $this->ensureSingleOpenPeriod($validated['status'], $period->id);
 
         $period->update($validated);
 
@@ -170,38 +189,6 @@ class AccountPeriodController extends Controller
             throw ValidationException::withMessages([
                 'start_date' => 'The selected date range overlaps with an existing period.',
             ]);
-        }
-    }
-
-    private function ensureSingleOpenPeriod($status, $ignoreId = null)
-    {
-        if ($status !== 'open') {
-            return;
-        }
-
-        $query = AccountPeriod::where('status', 'open');
-
-        if ($ignoreId) {
-            $query->where('id', '!=', $ignoreId);
-        }
-
-        if ($query->exists()) {
-            throw ValidationException::withMessages([
-                'status' => 'Only one account period can be open at a time.',
-            ]);
-        }
-    }
-
-    private function preventReopenIfNewerExists(AccountPeriod $period, $newStatus)
-    {
-        if ($period->status === 'closed' && $newStatus === 'open') {
-            $exists = AccountPeriod::where('start_date', '>', $period->end_date)->exists();
-
-            if ($exists) {
-                throw ValidationException::withMessages([
-                    'status' => 'Cannot reopen this period because a newer period exists.',
-                ]);
-            }
         }
     }
 

@@ -15,6 +15,9 @@ class CurrencyController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $filters = $request->input('filters', []);
+        $sort = $request->input('sort');
+        $direction = $request->input('direction', 'asc');
 
         $data = Currency::query()
             ->when($search, function ($q) use ($search) {
@@ -24,6 +27,27 @@ class CurrencyController extends Controller
                     ->orWhere('symbol', 'like', "%{$search}%");
                 });
             })
+            
+            /* FILTER: STATUS */
+            ->when(
+                !empty($filters['status']),
+                fn ($q) => $q->where(
+                    'is_active',
+                    $filters['status'] === 'active'
+                )
+            )
+
+            /* SORT */
+            ->when($sort, function ($q) use ($sort, $direction) {
+                match ($sort) {
+                    'code', 'name', 'symbol', 'precision', 'status' => $q->orderBy(
+                        $sort === 'status' ? 'is_active' : $sort,
+                        $direction
+                    ),
+                    default => null,
+                };
+            })
+
             ->paginate(10)
             ->through(fn ($currency) => [
                 'id' => $currency->id,

@@ -40,16 +40,29 @@ function Index({ data, search, currencies }: any) {
                 </button>
             </div>
 
-            <PaginatedTable
+          <PaginatedTable
                 data={data}
                 fetchUrl={route('branches.index')}
                 initialSearch={search}
+
+                /* =====================
+                COLUMNS (ALL SORTABLE)
+                ===================== */
                 columns={[
-                    { key: 'code', label: 'Code' },
-                    { key: 'name', label: 'Name' },
+                    {
+                        key: 'code',
+                        label: 'Code',
+                        sortable: true,
+                    },
+                    {
+                        key: 'name',
+                        label: 'Name',
+                        sortable: true,
+                    },
                     {
                         key: 'opening_balances',
                         label: 'Opening Balance',
+                        sortable: true, // backend decides how to sort
                         render: (balances, row) => (
                             <div className="flex flex-wrap gap-1">
                                 {balances.length === 0 && (
@@ -70,13 +83,32 @@ function Index({ data, search, currencies }: any) {
                             </div>
                         ),
                     },
-
                     {
                         key: 'status',
                         label: 'Status',
+                        sortable: true,
                         render: value => <StatusBadge status={value} />,
                     },
                 ]}
+
+                /* =====================
+                FILTERS
+                ===================== */
+                filters={[
+                    {
+                        key: 'status',
+                        label: 'Status',
+                        type: 'select',
+                        options: [
+                            { label: 'Active', value: 'active' },
+                            { label: 'Inactive', value: 'inactive' },
+                        ],
+                    },
+                ]}
+
+                /* =====================
+                ROW ACTIONS
+                ===================== */
                 rowActions={[
                     {
                         key: 'balance',
@@ -107,6 +139,10 @@ function Index({ data, search, currencies }: any) {
                         },
                     },
                 ]}
+
+                /* =====================
+                BULK ACTIONS
+                ===================== */
                 bulkActions={[
                     {
                         key: 'bulk-delete',
@@ -140,6 +176,7 @@ function Index({ data, search, currencies }: any) {
                     },
                 ]}
             />
+
 
             {/* Branch create / edit */}
             <BranchFormModal

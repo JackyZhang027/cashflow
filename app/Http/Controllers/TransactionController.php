@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\Branch;
 use App\Models\Currency;
+use App\Models\BranchTransfer;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -35,6 +36,10 @@ class TransactionController extends Controller
     protected function indexByType(Request $request, string $type)
     {
         $search = $request->input('search');
+        $filters = $request->input('filters', []);
+        $sort = $request->input('sort');
+        $direction = $request->input('direction', 'asc');
+
 
         $transactions = Transaction::query()
             ->with(['branch', 'currency'])
@@ -45,6 +50,25 @@ class TransactionController extends Controller
                       ->orWhere('actor_name', 'like', "%{$search}%")
                       ->orWhere('description', 'like', "%{$search}%");
                 });
+            })
+            ->when(!empty($filters['branch_id']), function ($q) use ($filters) {
+                $q->where('branch_id', $filters['branch_id']);
+            })
+            ->when(!empty($filters['currency_id']), function ($q) use ($filters) {
+                $q->where('currency_id', $filters['currency_id']);
+            })
+            ->when(!empty($filters['status']), function ($q) use ($filters) {
+                $q->where('status', $filters['status']);
+            })
+            ->when($sort, function ($q) use ($sort, $direction) {
+                match ($sort) {
+                    'transaction_date', 'amount', 'status' => $q->orderBy($sort, $direction),
+                    'branch.name' => $q->join('branches as b', 'b.id', '=', 'transactions.branch_id')
+                        ->orderBy('b.name', $direction),
+                    'currency.code' => $q->join('currencies as c', 'c.id', '=', 'transactions.currency_id')
+                        ->orderBy('c.code', $direction),
+                    default => null,
+                };
             })
             ->orderByDesc('transaction_date')
             ->paginate(10)
@@ -99,14 +123,14 @@ class TransactionController extends Controller
     public function update(Request $request, Transaction $transaction)
     {
         if ($request->user()->cannot('update', $transaction)) {
-            return redirect()->back()->withErrors([
+            return back()->withErrors([
                 'error' => 'This transaction belongs to a CLOSED accounting period and cannot be edited.',
             ]);
         }
 
 
         if ($transaction->is_approved) {
-            return redirect()->back()->withErrors([
+            return back()->withErrors([
                 'error' => 'Approved transaction cannot be edited.',
             ]);
         }
@@ -127,19 +151,34 @@ class TransactionController extends Controller
     public function destroy(Transaction $transaction)
     {
         if ($transaction->is_approved) {
-            return redirect()->back()->withErrors([
+            return back()->withErrors([
                 'error' => 'Approved transaction cannot be deleted.',
             ]);
         }
 
-        $transaction->update([
-            'deleted_by' => auth()->id(),
-        ]);
+        DB::transaction(function () use ($transaction) {
 
-        $transaction->delete();
+            $branchTransferId = $transaction->branch_transfer_id;
+
+            if ($branchTransferId) {
+                // Delete ALL transactions in this transfer
+                Transaction::where('branch_transfer_id', $branchTransferId)
+                    ->forceDelete();
+
+                // Delete the branch transfer itself
+                BranchTransfer::where('id', $branchTransferId)
+                    ->forceDelete();
+
+            } else {
+                // Normal single transaction delete
+                $transaction->forceDelete();
+            }
+        });
 
         return back()->with('success', 'Transaction deleted');
     }
+
+
 
     /* ================================
      * VALIDATION
@@ -192,9 +231,7 @@ class TransactionController extends Controller
         $this->authorize('approve', $transaction);
 
         if ($request->user()->cannot('update', $transaction)) {
-            return back()->withErrors([
-                'error' => 'This transaction belongs to a CLOSED accounting period and cannot be approved.',
-            ]);
+            return back()->with('error', 'This transactssion belongs to a CLOSED accounting period and cannot be approved.');
         }
 
         if ($transaction->status !== 'pending') {

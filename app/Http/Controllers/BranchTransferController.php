@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\BranchTransfer;
 use App\Models\Transaction;
+use App\Models\Branch;
+use App\Models\Currency;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +17,11 @@ class BranchTransferController extends Controller
      */
     public function index(Request $request)
     {
+        $search = $request->input('search');
+        $filters = $request->input('filters', []);
+        $sort = $request->input('sort');
+        $direction = $request->input('direction', 'asc');
+
         $data = BranchTransfer::query()
             ->with([
                 'fromBranch:id,name',
@@ -24,6 +31,21 @@ class BranchTransferController extends Controller
             ->when($request->search, function ($q, $search) {
                 $q->where('reference', 'like', "%{$search}%");
             })
+            ->when(!empty($filters['status']), function ($q) use ($filters) {
+                $q->where('status', $filters['status']);
+            })
+            ->when($sort, function ($q) use ($sort, $direction) {
+                match ($sort) {
+                    'transfer_date', 'amount', 'status' => $q->orderBy($sort, $direction),
+                    'from_branch' => $q->join('branches as fb', 'fb.id', '=', 'branch_transfers.from_branch_id')
+                        ->orderBy('fb.name', $direction),
+                    'to_branch' => $q->join('branches as tb', 'tb.id', '=', 'branch_transfers.to_branch_id')
+                        ->orderBy('tb.name', $direction),
+                    'currency' => $q->join('currencies as c', 'c.id', '=', 'branch_transfers.currency_id')
+                        ->orderBy('c.code', $direction),
+                    default => null,
+                };
+            })
             ->latest()
             ->paginate(10)
             ->withQueryString();
@@ -31,8 +53,8 @@ class BranchTransferController extends Controller
         return inertia('transfers/Index', [
             'data' => $data,
             'search' => $request->search,
-            'branches' => \App\Models\Branch::select('id', 'name')->get(),
-            'currencies' => \App\Models\Currency::select('id', 'code')->get(),
+            'branches' => Branch::select('id', 'name')->where('is_active', true)->get(),
+            'currencies' => Currency::select('id', 'code')->where('is_active', true)->get(),
         ]);
     }
 
@@ -49,25 +71,11 @@ class BranchTransferController extends Controller
             'transfer_date'  => ['required', 'date'],
             'amount'         => ['required', 'numeric', 'min:0.01'],
             'description'    => ['nullable', 'string'],
+            'in_actor_name'  => ['nullable', 'string'],
+            'out_actor_name' => ['nullable', 'string'],
         ]);
 
         DB::transaction(function () use ($data) {
-
-            // 🔒 Balance validation
-            // $balance = Transaction::where('branch_id', $data['from_branch_id'])
-            //     ->where('currency_id', $data['currency_id'])
-            //     ->where('status', 'approved')
-            //     ->selectRaw("
-            //         SUM(CASE WHEN type = 'in' THEN amount ELSE -amount END) as balance
-            //     ")
-            //     ->value('balance') ?? 0;
-
-            // if ($balance < $data['amount']) {
-            //     throw ValidationException::withMessages([
-            //         'error' => 'Insufficient balance in source branch.',
-            //     ]);
-            // }
-
             // Create transfer
             $transfer = BranchTransfer::create([
                 ...$data,
@@ -82,7 +90,8 @@ class BranchTransferController extends Controller
                 'transaction_date'   => $data['transfer_date'],
                 'type'               => 'out',
                 'amount'             => $data['amount'],
-                'description'        => 'Transfer to branch',
+                'actor_name'         => $data['out_actor_name'] ?? null,
+                'description'        => $data['description'] ?? 'Transfer from branch',
                 'branch_transfer_id' => $transfer->id,
                 'status'             => 'pending',
                 'created_by'         => auth()->id(),
@@ -95,7 +104,8 @@ class BranchTransferController extends Controller
                 'transaction_date'   => $data['transfer_date'],
                 'type'               => 'in',
                 'amount'             => $data['amount'],
-                'description'        => 'Transfer from branch',
+                'actor_name'         => $data['in_actor_name'] ?? null,
+                'description'        => $data['description'] ?? 'Transfer from branch',
                 'branch_transfer_id' => $transfer->id,
                 'status'             => 'pending',
                 'created_by'         => auth()->id(),

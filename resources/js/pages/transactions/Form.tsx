@@ -66,15 +66,17 @@ export default function TransactionFormModal({
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        const action = isEdit
-            ? put(route('transactions.update', transaction.id))
-            : post(route('transactions.store'));
+        const url = isEdit
+            ? route('transactions.update', transaction.id)
+            : route('transactions.store');
 
-        action({
+        const method = isEdit ? put : post;
+
+        method(url, {
             preserveScroll: true,
             onSuccess: () => {
                 reset();
-                onClose();
+                onClose(); // ✅ CLOSE MODAL HERE
             },
         });
     };
@@ -96,6 +98,7 @@ export default function TransactionFormModal({
                         {errors.error}
                     </div>
                 )}
+
 
                 {/* Branch */}
                 <div>
@@ -142,9 +145,11 @@ export default function TransactionFormModal({
                     <label className="block text-sm font-medium">Transaction Date</label>
                     <input
                         type="date"
-                        className="w-full border rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+                        className="w-full border rounded px-3 py-2"
                         value={data.transaction_date}
+                        onChange={e => setData('transaction_date', e.target.value)}
                     />
+                    <ErrorText message={errors.transaction_date} />
                 </div>
 
                 {/* Amount */}

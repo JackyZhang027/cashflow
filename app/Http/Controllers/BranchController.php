@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\Currency;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Database\QueryException;
 
 class BranchController extends Controller
 {
@@ -15,20 +16,43 @@ class BranchController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $filters = $request->input('filters', []);
+        $sort = $request->input('sort');
+        $direction = $request->input('direction', 'asc');
+        
         $data = Branch::query()
-            ->with([
-                'openingBalances.currency'
-            ])
+            ->with(['openingBalances.currency'])
+
+            /* SEARCH */
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('code', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%")
-                    ->orWhere('city', 'like', "%{$search}%")
-                    ->orWhere('province', 'like', "%{$search}%")
-                    ->orWhere('address', 'like', "%{$search}%");
+                    ->orWhere('name', 'like', "%{$search}%");
                 });
             })
+
+            /* FILTER: STATUS */
+            ->when(
+                !empty($filters['status']),
+                fn ($q) => $q->where(
+                    'is_active',
+                    $filters['status'] === 'active'
+                )
+            )
+
+            /* SORT */
+            ->when($sort, function ($q) use ($sort, $direction) {
+                match ($sort) {
+                    'code', 'name', 'status' => $q->orderBy(
+                        $sort === 'status' ? 'is_active' : $sort,
+                        $direction
+                    ),
+                    default => null,
+                };
+            })
+
             ->paginate(10)
+
             ->through(fn ($branch) => [
                 'id' => $branch->id,
                 'code' => $branch->code,
@@ -42,14 +66,13 @@ class BranchController extends Controller
                     'amount' => $ob->opening_balance,
                     'opening_date' => $ob->opening_date,
                 ]),
-
             ]);
+
         return Inertia::render('branches/Index', [
             'data' => $data,
-            'search' => $request->search,
-            'currencies' => Currency::where('is_active', TRUE)->get(),
+            'search' => $search,
+            'currencies' => Currency::where('is_active', true)->get(),
         ]);
-
     }
 
 
@@ -105,8 +128,15 @@ class BranchController extends Controller
     
     public function destroy(Branch $branch)
     {
-        $branch->delete();
-        return redirect()->back()->with('success', 'Branch deleted successfully.');
+        try {
+            $branch->forceDelete();
+            return redirect()->back()->with('success', 'Branch deleted successfully.');
+        } catch (QueryException $e) {
+            return redirect()->back()->with('error', 'Cannot delete branch because it is still used in transactions.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to delete branch: ' . $e->getMessage());
+        }
+       
     }
     /**
      * Bulk delete branches.
@@ -119,11 +149,13 @@ class BranchController extends Controller
         ]);
 
         try {
-            Branch::whereIn('id', $request->ids)->delete();
+            Branch::whereIn('id', $request->ids)->forceDelete();
 
             return redirect()->back()->with('success', count($request->ids) . ' branches deleted successfully');
+        } catch (QueryException $e) {
+            return redirect()->back()->with('error', 'Cannot delete branch because it is still used in transactions.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to delete branches: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to delete branch: ' . $e->getMessage());
         }
     }
 

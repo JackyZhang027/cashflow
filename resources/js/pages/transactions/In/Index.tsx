@@ -35,17 +35,44 @@ function Index({ data, search, branches, currencies }: any) {
                 fetchUrl={route('transactions.in.index')}
                 initialSearch={search}
                 columns={[
-                    { key: 'transaction_date', label: 'Date' },
-                    { key: 'full_reference', label: 'Ref' },
-                    { key: 'branch.name', label: 'Branch' },
-                    { key: 'currency.code', label: 'Currency' },
-                    { key: 'amount', label: 'Amount', data_type: 'currency' },
-                    { key: 'actor_name', label: 'Penyetor' },
+                    { key: 'transaction_date', label: 'Date', sortable: true },
+                    { key: 'full_reference', label: 'Ref', sortable: true },
+                    { key: 'branch.name', label: 'Branch', sortable: true },
+                    { key: 'currency.code', label: 'Currency', sortable: true },
+                    { key: 'amount', label: 'Amount', data_type: 'currency', sortable: true },
+                    { key: 'actor_name', label: 'Penyetor', sortable: true },
+                    { key: 'description', label: 'Description', sortable: false },
                     {
                         key: 'status',
                         label: 'Status',
+                        sortable: true,
                         render: (value) => <StatusBadge status={value} />,
                     },
+                ]}
+                filters={[
+                    {
+                        key: 'status',
+                        label: 'All',
+                        type: 'select',
+                        defaultValue: 'pending',
+                        options: [
+                            { label: 'Pending', value: 'pending' },
+                            { label: 'Approved', value: 'approved' },
+                            { label: 'Rejected', value: 'rejected' },
+                        ],
+                    },
+                    {
+                        key: 'branch_id',
+                        label: 'Branch',
+                        type: 'select',
+                        options: branches.map((branch: any) => ({ label: branch.name, value: branch.id }) ),
+                    },
+                    {
+                        key: 'currency_id',
+                        label: 'Currency',
+                        type: 'select',
+                        options: currencies.map((currency: any) => ({ label: currency.code, value: currency.id }) ),
+                    }
                 ]}
                 rowActions={[
                     {

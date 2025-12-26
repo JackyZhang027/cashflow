@@ -34,15 +34,29 @@ function Index({ data, search, branches, currencies }: any) {
                 fetchUrl={route('transfers.index')}
                 initialSearch={search}
                 columns={[
-                    { key: 'transfer_date', label: 'Date' },
-                    { key: 'from_branch.name', label: 'From Branch' },
-                    { key: 'to_branch.name', label: 'To Branch' },
-                    { key: 'currency.code', label: 'Currency' },
-                    { key: 'amount', label: 'Amount', data_type: 'currency' },
+                    { key: 'transfer_date', label: 'Date', sortable: true },
+                    { key: 'from_branch.name', label: 'From Branch', sortable: true },
+                    { key: 'to_branch.name', label: 'To Branch', sortable: true },
+                    { key: 'currency.code', label: 'Currency', sortable: true },
+                    { key: 'amount', label: 'Amount', data_type: 'currency', sortable: true },
                     {
                         key: 'status',
                         label: 'Status',
+                        sortable: true,
                         render: (value) => <StatusBadge status={value} />,
+                    },
+                ]}
+                filters={[
+                    {
+                        key: 'status',
+                        label: 'All',
+                        type: 'select',
+                        defaultValue: 'pending',
+                        options: [
+                            { label: 'Pending', value: 'pending' },
+                            { label: 'Approved', value: 'approved' },
+                            { label: 'Rejected', value: 'rejected' },
+                        ],
                     },
                 ]}
                 rowActions={[
