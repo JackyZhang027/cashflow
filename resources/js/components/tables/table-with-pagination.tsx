@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 
 /* =====================
@@ -71,6 +71,19 @@ export default function PaginatedTable<T extends { id: number }>({
     filters?: Filter[];
 }) {
     /* =====================
+       INITIALIZE FILTER DEFAULTS
+    ===================== */
+    const initialFilterValues = useMemo(() => {
+        const defaults: Record<string, any> = {};
+        filters.forEach(f => {
+            if (f.defaultValue !== undefined) {
+                defaults[f.key] = f.defaultValue;
+            }
+        });
+        return defaults;
+    }, []);
+
+    /* =====================
        STATE
     ===================== */
 
@@ -80,54 +93,66 @@ export default function PaginatedTable<T extends { id: number }>({
     const [sortBy, setSortBy] = useState<string | null>(null);
     const [sortDir, setSortDir] = useState<'asc' | 'desc' | null>(null);
 
-    const [filterValues, setFilterValues] = useState<Record<string, any>>({});
+    const [filterValues, setFilterValues] = useState<Record<string, any>>(initialFilterValues);
+    
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
+    /* =====================
+       DEDUPLICATE DATA
+    ===================== */
+    const uniqueData = useMemo(() => {
+        const seen = new Set();
+        return data.data.filter((row: any) => {
+            if (seen.has(row.id)) {
+                return false;
+            }
+            seen.add(row.id);
+            return true;
+        });
+    }, [data.data]);
 
     const debounceRef = useRef<number | null>(null);
     const isFirstRender = useRef(true);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const requestIdRef = useRef(0);
 
     /* =====================
-       INIT FILTER DEFAULTS
+       INITIAL FETCH WITH DEFAULT FILTERS
+    ===================== */
+    useEffect(() => {
+        // Only fetch on mount if there are default filters
+        if (Object.keys(initialFilterValues).length > 0) {
+            doFetch(1);
+        }
+    }, []); // Empty dependency - run once on mount
+
+    /* =====================
+       TRIGGER FETCH ON CHANGES
     ===================== */
 
     useEffect(() => {
-        const defaults: Record<string, any> = {};
-        filters.forEach(f => {
-            if (f.defaultValue !== undefined) {
-                defaults[f.key] = f.defaultValue;
-            }
-        });
-        setFilterValues(defaults);
-    }, []);
-
-    /* =====================
-       DEBOUNCED SEARCH
-    ===================== */
-
-    useEffect(() => {
+        // Skip first render
         if (isFirstRender.current) {
             isFirstRender.current = false;
             return;
         }
 
-        if (debounceRef.current) clearTimeout(debounceRef.current);
+        // Clear existing timeout
+        if (debounceRef.current) {
+            clearTimeout(debounceRef.current);
+        }
 
+        // Debounce the fetch
         debounceRef.current = window.setTimeout(() => {
             doFetch(1);
         }, 400);
 
         return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
         };
-    }, [search]);
-
-    /* =====================
-       AUTO FETCH ON SORT/FILTER
-    ===================== */
-
-    useEffect(() => {
-        doFetch(1);
-    }, [sortBy, sortDir, filterValues]);
+    }, [search, sortBy, sortDir, filterValues]);
 
     /* =====================
        CLEAR SELECTION ON DATA CHANGE
@@ -135,30 +160,59 @@ export default function PaginatedTable<T extends { id: number }>({
 
     useEffect(() => {
         setSelectedIds([]);
-    }, [data]);
+    }, [data.current_page]); // Changed from data.data to current_page to avoid issues
 
     /* =====================
-       FETCH
+       FETCH FUNCTION
     ===================== */
 
     const doFetch = (page: number = 1) => {
+        // Prevent duplicate calls
+        if (loading) return;
+        
+        // Cancel any pending request
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        
+        // Increment request ID to track latest request
+        requestIdRef.current += 1;
+        const currentRequestId = requestIdRef.current;
+        
         setLoading(true);
+
+        // Build query params
+        const params: Record<string, any> = { page };
+        
+        if (search) params.search = search;
+        if (sortBy) params.sort = sortBy;
+        if (sortDir) params.direction = sortDir;
+        
+        // Only include non-empty filters
+        const activeFilters: Record<string, any> = {};
+        Object.entries(filterValues).forEach(([key, value]) => {
+            if (value !== '' && value !== null && value !== undefined) {
+                activeFilters[key] = value;
+            }
+        });
+        if (Object.keys(activeFilters).length > 0) {
+            params.filters = activeFilters;
+        }
 
         router.get(
             fetchUrl,
-            {
-                page,
-                search,
-                sort: sortBy,
-                direction: sortDir,
-                filters: filterValues,
-            },
+            params,
             {
                 preserveScroll: true,
                 preserveState: true,
-                replace: true,
                 only: ['data'],
-                onFinish: () => setLoading(false),
+                preserveUrl: true,
+                onFinish: () => {
+                    // Only set loading to false if this is still the latest request
+                    if (currentRequestId === requestIdRef.current) {
+                        setLoading(false);
+                    }
+                },
             }
         );
     };
@@ -169,9 +223,9 @@ export default function PaginatedTable<T extends { id: number }>({
 
     const toggleSelectAll = () => {
         setSelectedIds(
-            selectedIds.length === data.data.length
+            selectedIds.length === uniqueData.length
                 ? []
-                : data.data.map(r => r.id)
+                : uniqueData.map(r => r.id)
         );
     };
 
@@ -181,12 +235,12 @@ export default function PaginatedTable<T extends { id: number }>({
         );
     };
 
-    const selectedRows = data.data.filter(r => selectedIds.includes(r.id));
+    const selectedRows = uniqueData.filter(r => selectedIds.includes(r.id));
 
     const isAllSelected =
-        selectedIds.length === data.data.length && data.data.length > 0;
+        selectedIds.length === uniqueData.length && uniqueData.length > 0;
     const isSomeSelected =
-        selectedIds.length > 0 && selectedIds.length < data.data.length;
+        selectedIds.length > 0 && selectedIds.length < uniqueData.length;
 
     /* =====================
        RENDER
@@ -212,10 +266,10 @@ export default function PaginatedTable<T extends { id: number }>({
                                         <input
                                             value={filterValues[filter.key] ?? ''}
                                             onChange={e =>
-                                                setFilterValues({
-                                                    ...filterValues,
+                                                setFilterValues(prev => ({
+                                                    ...prev,
                                                     [filter.key]: e.target.value,
-                                                })
+                                                }))
                                             }
                                             placeholder={filter.placeholder || filter.label}
                                             className="h-10 rounded-lg border px-3 text-sm"
@@ -226,10 +280,10 @@ export default function PaginatedTable<T extends { id: number }>({
                                         <select
                                             value={filterValues[filter.key] ?? ''}
                                             onChange={e =>
-                                                setFilterValues({
-                                                    ...filterValues,
+                                                setFilterValues(prev => ({
+                                                    ...prev,
                                                     [filter.key]: e.target.value,
-                                                })
+                                                }))
                                             }
                                             className="h-10 rounded-lg border px-3 text-sm"
                                         >
@@ -237,11 +291,9 @@ export default function PaginatedTable<T extends { id: number }>({
                                                 {filter.label}
                                             </option>
                                             {filter.options?.map(opt => (
-                                                // if filter has default property, set that option as selected
                                                 <option
                                                     key={opt.value}
                                                     value={opt.value}
-                                                    selected={filter.defaultValue === opt.value}
                                                 >
                                                     {opt.label}
                                                 </option>
@@ -252,11 +304,7 @@ export default function PaginatedTable<T extends { id: number }>({
                             ))}
                         </div>
                     )}
-
-                    
                 </div>
-
-                
 
                 {/* Bulk actions */}
                 {bulkActions.length > 0 && selectedIds.length > 0 && (
@@ -344,8 +392,8 @@ export default function PaginatedTable<T extends { id: number }>({
                         </tr>
                     </thead>
 
-                    <tbody className="divide-y">
-                        {data.data.length === 0 && (
+                    <tbody className="divide-y" key={`page-${data.current_page}`}>
+                        {uniqueData.length === 0 && (
                             <tr>
                                 <td
                                     colSpan={
@@ -360,8 +408,8 @@ export default function PaginatedTable<T extends { id: number }>({
                             </tr>
                         )}
 
-                        {data.data.map((row: any) => (
-                            <tr key={row.id} className="hover:bg-gray-50">
+                        {uniqueData.map((row: any, index: number) => (
+                            <tr key={`${data.current_page}-${row.id}-${index}`} className="hover:bg-gray-50">
                                 {bulkActions.length > 0 && (
                                     <td className="px-4 py-3">
                                         <input

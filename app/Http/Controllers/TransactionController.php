@@ -40,15 +40,14 @@ class TransactionController extends Controller
         $sort = $request->input('sort');
         $direction = $request->input('direction', 'asc');
 
-
         $transactions = Transaction::query()
             ->with(['branch', 'currency'])
             ->where('type', $type)
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('reference', 'like', "%{$search}%")
-                      ->orWhere('actor_name', 'like', "%{$search}%")
-                      ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhere('actor_name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
                 });
             })
             ->when(!empty($filters['branch_id']), function ($q) use ($filters) {
@@ -63,14 +62,19 @@ class TransactionController extends Controller
             ->when($sort, function ($q) use ($sort, $direction) {
                 match ($sort) {
                     'transaction_date', 'amount', 'status' => $q->orderBy($sort, $direction),
-                    'branch.name' => $q->join('branches as b', 'b.id', '=', 'transactions.branch_id')
-                        ->orderBy('b.name', $direction),
-                    'currency.code' => $q->join('currencies as c', 'c.id', '=', 'transactions.currency_id')
-                        ->orderBy('c.code', $direction),
+                    'branch.name' => $q->select('transactions.*')
+                        ->join('branches', 'branches.id', '=', 'transactions.branch_id')
+                        ->orderBy('branches.name', $direction),
+                    'currency.code' => $q->select('transactions.*')
+                        ->join('currencies', 'currencies.id', '=', 'transactions.currency_id')
+                        ->orderBy('currencies.code', $direction),
                     default => null,
                 };
+            }, function ($q) {
+                // Default sort only when no sort is specified
+                $q->orderByDesc('transaction_date');
             })
-            ->orderByDesc('transaction_date')
+            ->orderBy('id', 'desc') // Stable sort tiebreaker
             ->paginate(10)
             ->withQueryString();
 
@@ -86,6 +90,7 @@ class TransactionController extends Controller
             ]
         );
     }
+
     
     /* ================================
      * Approval Page
@@ -232,6 +237,7 @@ class TransactionController extends Controller
 
         if ($request->user()->cannot('update', $transaction)) {
             return back()->with('error', 'This transactssion belongs to a CLOSED accounting period and cannot be approved.');
+
         }
 
         if ($transaction->status !== 'pending') {

@@ -36,17 +36,16 @@ class BranchTransferController extends Controller
             })
             ->when($sort, function ($q) use ($sort, $direction) {
                 match ($sort) {
-                    'transfer_date', 'amount', 'status' => $q->orderBy($sort, $direction),
-                    'from_branch' => $q->join('branches as fb', 'fb.id', '=', 'branch_transfers.from_branch_id')
+                    'transaction_date', 'amount', 'status' => $q->orderBy($sort, $direction),
+                    'from_branch.name' => $q->join('branches as fb', 'fb.id', '=', 'branch_transfers.from_branch_id')
                         ->orderBy('fb.name', $direction),
-                    'to_branch' => $q->join('branches as tb', 'tb.id', '=', 'branch_transfers.to_branch_id')
+                    'to_branch.name' => $q->join('branches as tb', 'tb.id', '=', 'branch_transfers.to_branch_id')
                         ->orderBy('tb.name', $direction),
-                    'currency' => $q->join('currencies as c', 'c.id', '=', 'branch_transfers.currency_id')
+                    'currency.code' => $q->join('currencies as c', 'c.id', '=', 'branch_transfers.currency_id')
                         ->orderBy('c.code', $direction),
                     default => null,
                 };
             })
-            ->latest()
             ->paginate(10)
             ->withQueryString();
 
