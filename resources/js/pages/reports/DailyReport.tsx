@@ -14,6 +14,7 @@ type Branch = {
 type Currency = {
     id: number;
     code: string;
+    name: string;
 };
 
 type Transaction = {
@@ -37,14 +38,15 @@ export default function DailyReport() {
         beginBalance = 0,
         filters,
         errors = {},
-    } = usePage().props as {
+    } = usePage().props as unknown as {
         generated: boolean;
         branches: Branch[];
         currencies: Currency[];
         transactions?: Transaction[];
         beginBalance?: number;
         filters: {
-            date: string;
+            date_from: string;
+            date_to: string;
             branch_id: number | null;
             currency_id: number | null;
         };
@@ -58,10 +60,12 @@ export default function DailyReport() {
     /* ================= STATE ================= */
 
     const [form, setForm] = useState({
-        date: filters.date ?? '',
+        date_from: filters.date_from ?? '',
+        date_to: filters.date_to ?? '',
         branch_id: filters.branch_id ?? null,
         currency_id: filters.currency_id ?? null,
     });
+
 
     const [localErrors, setLocalErrors] = useState<{
         date?: string;
@@ -75,8 +79,8 @@ export default function DailyReport() {
 
         const newErrors: typeof localErrors = {};
 
-        if (!form.date) {
-            newErrors.date = 'Date is required';
+        if (!form.date_from || !form.date_to) {
+            newErrors.date = 'Date range is required';
         }
 
         if (!form.currency_id) {
@@ -85,14 +89,13 @@ export default function DailyReport() {
 
         setLocalErrors(newErrors);
 
-        if (Object.keys(newErrors).length > 0) {
-            return;
-        }
+        if (Object.keys(newErrors).length > 0) return;
 
         router.get(route('reports.daily'), form, {
             preserveScroll: true,
         });
     };
+
     
     const exportPdf = () => {
         window.open(
@@ -127,33 +130,32 @@ export default function DailyReport() {
                         onSubmit={submit}
                         className="flex flex-wrap gap-4 items-end"
                     >
-                        {/* DATE */}
-                        <div>
-                            <label className="block text-sm mb-1">
-                                Date
-                            </label>
-                            <input
-                                type="date"
-                                value={form.date}
-                                onChange={(e) => {
-                                    setForm({ ...form, date: e.target.value });
-                                    setLocalErrors({
-                                        ...localErrors,
-                                        date: undefined,
-                                    });
-                                }}
-                                className={`border rounded px-3 py-2 ${
-                                    localErrors.date || errors.date
-                                        ? 'border-red-500'
-                                        : ''
-                                }`}
-                            />
-                            {(localErrors.date || errors.date) && (
-                                <p className="text-xs text-red-600 mt-1">
-                                    {localErrors.date || errors.date}
-                                </p>
-                            )}
-                        </div>
+                        {/* DATE FROM */}
+                    <div>
+                        <label className="block text-sm mb-1">From</label>
+                        <input
+                            type="date"
+                            value={form.date_from}
+                            onChange={(e) =>
+                                setForm({ ...form, date_from: e.target.value })
+                            }
+                            className="border rounded px-3 py-2"
+                        />
+                    </div>
+
+                    {/* DATE TO */}
+                    <div>
+                        <label className="block text-sm mb-1">To</label>
+                        <input
+                            type="date"
+                            value={form.date_to}
+                            onChange={(e) =>
+                                setForm({ ...form, date_to: e.target.value })
+                            }
+                            className="border rounded px-3 py-2"
+                        />
+                    </div>
+
 
                         {/* BRANCH */}
                         <div>
@@ -207,7 +209,7 @@ export default function DailyReport() {
                                 <option value="">-- Select --</option>
                                 {currencies.map((c) => (
                                     <option key={c.id} value={c.id}>
-                                        {c.code}
+                                        {c.name}
                                     </option>
                                 ))}
                             </select>

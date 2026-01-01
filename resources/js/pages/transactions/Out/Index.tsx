@@ -40,6 +40,7 @@ function Index({ data, search, branches, currencies }: any) {
                     { key: 'currency.code', label: 'Currency', sortable: true },
                     { key: 'amount', label: 'Amount', data_type: 'currency', sortable: true },
                     { key: 'actor_name', label: 'Pemohon', sortable: true },
+                    { key: 'description', label: 'Description', sortable: true },
                     {
                         key: 'status', 
                         label: 'Status',

@@ -145,7 +145,6 @@ export default function BranchTransferFormModal({
                     >
                         <option value="">Select Branch</option>
                         {branches
-                            .filter(b => b.id != data.from_branch_id)
                             .map((b) => (
                                 <option key={b.id} value={b.id}>
                                     {b.name}

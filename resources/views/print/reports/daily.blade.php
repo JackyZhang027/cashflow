@@ -26,10 +26,11 @@
 <body>
 
 <h3 class="center">LAPORAN HARIAN</h3>
-<table style="font-weight: bold">
+
+<table style="font-weight: bold; margin-bottom: 10px">
     <tr>
-        <td style="width:50px">Tanggal</td>
-        <td>: {{ $date }}</td>
+        <td style="width:90px">Periode</td>
+        <td>: {{ $dateFrom }} s/d {{ $dateTo }}</td>
     </tr>
     <tr>
         <td>Cabang</td>
@@ -46,7 +47,7 @@
         <tr>
             <th class="center">Tanggal Approved</th>
             <th class="center">Cabang</th>
-            <th class="center">Terima Dari/Pemohon</th>
+            <th class="center">Terima Dari / Pemohon</th>
             <th class="center">Keterangan</th>
             <th class="center">No Trans</th>
             <th class="right">Debit</th>
@@ -54,6 +55,7 @@
             <th class="right">Balance</th>
         </tr>
     </thead>
+
     <tbody>
         @php
             $balance = $beginBalance;
@@ -61,25 +63,29 @@
             $totalCredit = 0;
         @endphp
 
+        {{-- BEGIN BALANCE --}}
         <tr class="bold">
             <td colspan="7">BEGIN BALANCE</td>
             <td class="right">{{ number_format($balance, 2) }}</td>
         </tr>
 
-        @foreach($transactions as $t)
+        {{-- TRANSACTIONS --}}
+        @forelse($transactions as $t)
             @php
-                $debit = $t->type === 'in' ? $t->amount : 0;
-                $credit = $t->type === 'out' ? $t->amount : 0;
+                $debit = $t['type'] === 'in' ? $t['amount'] : 0;
+                $credit = $t['type'] === 'out' ? $t['amount'] : 0;
+
                 $balance += $debit - $credit;
                 $totalDebit += $debit;
                 $totalCredit += $credit;
             @endphp
+
             <tr>
-                <td>{{ $t->approved_at }}</td>
-                <td>{{ $t->branch->code }}</td>
-                <td>{{ $t->actor_name }}</td>
-                <td>{{ $t->description }}</td>
-                <td>{{ $t->full_reference }}</td>
+                <td>{{ $t['approved_at'] }}</td>
+                <td style="white-space: nowrap">{{ $t['branch'] }}</td>
+                <td>{{ $t['author'] }}</td>
+                <td>{{ $t['description'] }}</td>
+                <td style="white-space: nowrap">{{ $t['full_reference'] }}</td>
                 <td class="right">
                     {{ $debit ? number_format($debit, 2) : '' }}
                 </td>
@@ -88,8 +94,15 @@
                 </td>
                 <td class="right">{{ number_format($balance, 2) }}</td>
             </tr>
-        @endforeach
+        @empty
+            <tr>
+                <td colspan="8" class="center" style="font-style: italic">
+                    Tidak ada transaksi
+                </td>
+            </tr>
+        @endforelse
 
+        {{-- TOTAL --}}
         <tr class="bold">
             <td colspan="5" class="right">TOTAL</td>
             <td class="right">{{ number_format($totalDebit, 2) }}</td>

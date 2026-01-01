@@ -73,11 +73,8 @@ export default function CurrencyFormModal({ show, currency, onClose }: Props) {
                 <div>
                     <label className="block text-sm font-medium">Code</label>
                     <input
-                        className={`w-full border rounded px-3 py-2 ${
-                            isEdit ? 'bg-gray-100' : ''
-                        }`}
+                        className='w-full border rounded px-3 py-2'
                         value={data.code}
-                        disabled={isEdit}
                         onChange={e => setData('code', e.target.value.toUpperCase())}
                     />
                     {errors.code && <p className="text-red-500 text-sm">{errors.code}</p>}

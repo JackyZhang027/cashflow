@@ -63,16 +63,16 @@ class BalanceSummaryController extends Controller
                 COALESCE(ob.opening_balance, 0)
                 + COALESCE(SUM(
                     CASE
-                        WHEN t.transaction_date < ? AND t.type = 'in' THEN t.amount
-                        WHEN t.transaction_date < ? AND t.type = 'out' THEN -t.amount
+                        WHEN t.approved_at < ? AND t.type = 'in' THEN t.amount
+                        WHEN t.approved_at < ? AND t.type = 'out' THEN -t.amount
                         ELSE 0
                     END
                 ), 0) AS begin_balance,
 
                 COALESCE(SUM(
                     CASE
-                        WHEN t.transaction_date BETWEEN ? AND ? AND t.type = 'in' THEN t.amount
-                        WHEN t.transaction_date BETWEEN ? AND ? AND t.type = 'out' THEN -t.amount
+                        WHEN t.approved_at BETWEEN ? AND ? AND t.type = 'in' THEN t.amount
+                        WHEN t.approved_at BETWEEN ? AND ? AND t.type = 'out' THEN -t.amount
                         ELSE 0
                     END
                 ), 0) AS transaction_balance,
@@ -80,8 +80,8 @@ class BalanceSummaryController extends Controller
                 COALESCE(ob.opening_balance, 0)
                 + COALESCE(SUM(
                     CASE
-                        WHEN t.transaction_date <= ? AND t.type = 'in' THEN t.amount
-                        WHEN t.transaction_date <= ? AND t.type = 'out' THEN -t.amount
+                        WHEN t.approved_at <= ? AND t.type = 'in' THEN t.amount
+                        WHEN t.approved_at <= ? AND t.type = 'out' THEN -t.amount
                         ELSE 0
                     END
                 ), 0) AS ending_balance

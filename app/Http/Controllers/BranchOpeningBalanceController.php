@@ -24,6 +24,10 @@ class BranchOpeningBalanceController extends Controller
             'opening_balance' => ['required', 'numeric', 'min:0'],
             'opening_date' => ['required', 'date'],
         ]);
+        // ✅ AUTHORIZE based on opening_date
+        if ($request->user()->cannot('create', [Transaction::class, ['transaction_date' => $data['opening_date']]])) {
+            return back()->with('error', 'This opening balance belongs to a CLOSED accounting period.');
+        }
 
         try {
             DB::transaction(function () use ($data) {
@@ -54,6 +58,10 @@ class BranchOpeningBalanceController extends Controller
                     'transaction_date' => $data['opening_date'],
                     'note' => 'Opening Balance',
                     'is_opening' => true,
+                    'status' => 'approved',
+                    'approved_at' => now(),
+                    'approved_by' => auth()->id(),
+                    'created_by' => auth()->id(),
                 ]);
             });
         } catch (\Throwable $e) {
@@ -77,9 +85,21 @@ class BranchOpeningBalanceController extends Controller
             'opening_balance' => ['required', 'numeric', 'min:0'],
             'opening_date' => ['required', 'date'],
         ]);
+        // dd($openingBalance->branch_id, $openingBalance->currency_id);
+
+        // ✅ Get existing opening transaction
+        $openingTransaction = Transaction::where('branch_id', $openingBalance->branch_id)
+            ->where('currency_id', $openingBalance->currency_id)
+            ->where('is_opening', true)
+            ->firstOrFail();
+
+        // ✅ AUTHORIZE against ORIGINAL transaction date
+        if ($request->user()->cannot('update', $openingTransaction)) {
+            return back()->with('error', 'This opening balance belongs to a CLOSED accounting period.');
+        }
 
         try {
-            DB::transaction(function () use ($openingBalance, $data) {
+            DB::transaction(function () use ($openingBalance, $openingTransaction, $data) {
 
                 $locked = Transaction::where('branch_id', $openingBalance->branch_id)
                     ->where('currency_id', $openingBalance->currency_id)
@@ -97,23 +117,18 @@ class BranchOpeningBalanceController extends Controller
                     'opening_date' => $data['opening_date'],
                 ]);
 
-                Transaction::where('branch_id', $openingBalance->branch_id)
-                    ->where('currency_id', $openingBalance->currency_id)
-                    ->where('is_opening', true)
-                    ->update([
-                        'amount' => $data['opening_balance'],
-                        'transaction_date' => $data['opening_date'],
-                    ]);
+                // 🔒 Only update after authorization passed
+                $openingTransaction->update([
+                    'amount' => $data['opening_balance'],
+                    'transaction_date' => $data['opening_date'],
+                ]);
             });
         } catch (\Throwable $e) {
-            return redirect()
-                ->back()
-                ->with('error', $e->getMessage());
+            // dd();
+            return back()->with('error', $e->getMessage());
         }
 
-        return redirect()
-            ->back()
-            ->with('success', 'Opening balance updated.');
+        return back()->with('success', 'Opening balance updated.');
     }
 
 }

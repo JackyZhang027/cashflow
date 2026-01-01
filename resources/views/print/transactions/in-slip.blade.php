@@ -33,7 +33,7 @@
         .card {
             border: 2px solid #000;
             padding: 12px;
-            height: 310px;
+            height: 220px;
             position: relative;
         }
 
@@ -59,6 +59,8 @@
         .rows {
             font-size: 11px;
             line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .row {
@@ -66,6 +68,7 @@
             grid-template-columns: 70px 1fr;
             gap: 6px;
         }
+        
 
         .row-header {
             font-weight: bold;
@@ -79,6 +82,11 @@
             display: inline-block;
             min-width: 80px;
         }
+        .terbilang {
+            max-width: 65%;
+            white-space: normal;
+        }
+
 
         .cap-box {
             position: absolute;
@@ -125,7 +133,7 @@
 <body>
 
 @php
-    $chunks = $transactions->chunk(3);
+    $chunks = $transactions->chunk(4);
 @endphp
 
 @foreach ($chunks as $page)
@@ -139,7 +147,7 @@
                     <div class="card">
                         <div class="header">
                             <div class="logo">TCB</div>
-                            <svg class="barcode" jsbarcode-value="{{ $trx->reference }}"
+                            <svg class="barcode" jsbarcode-value="{{ $trx->full_reference }}"
                                  jsbarcode-width="1"
                                  jsbarcode-height="30"
                                  jsbarcode-fontsize="8"
@@ -166,7 +174,7 @@
                                 <div>Jumlah</div>
                                 <div>
                                     <span class="amount-box">
-                                        {{ $trx->currency->code }}
+                                        {{ $trx->currency->symbol }}
                                         {{ number_format($trx->amount, 2, ',', '.') }}
                                     </span>
                                 </div>
@@ -174,7 +182,7 @@
 
                             <div class="row">
                                 <div>Terbilang</div>
-                                <div># {{ $trx->amount_in_words }} #</div>
+                                <div class="terbilang"># {{ $trx->amount_in_words }} #</div>
                             </div>
                         </div>
 
@@ -185,7 +193,7 @@
                     <div class="card">
                         <div class="header">
                             <div class="logo">TCB</div>
-                            <svg class="barcode" jsbarcode-value="{{ $trx->reference }}"
+                            <svg class="barcode" jsbarcode-value="{{ $trx->full_reference }}"
                                  jsbarcode-width="1"
                                  jsbarcode-height="30"
                                  jsbarcode-fontsize="8"

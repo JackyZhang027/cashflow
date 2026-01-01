@@ -113,6 +113,12 @@ class TransactionController extends Controller
     public function store(Request $request)
     {
         $data = $this->validatedData($request);
+        if ($request->user()->cannot('create', [Transaction::class, $data])) {
+            return back()->withErrors([
+                'error' => 'This transaction belongs to a CLOSED accounting period and cannot be created.',
+            ]);
+        }
+
 
         Transaction::create([
             ...$data,
@@ -184,24 +190,28 @@ class TransactionController extends Controller
     }
 
 
-
-    /* ================================
-     * VALIDATION
-     * ================================ */
     protected function validatedData(Request $request, bool $isUpdate = false): array
     {
-        return $request->validate([
+        $rules = [
             'reference' => ['nullable', 'string', 'max:255'],
             'branch_id' => ['required', 'exists:branches,id'],
             'currency_id' => ['required', 'exists:currencies,id'],
-            'transaction_date' => ['required', 'date', 'after_or_equal:today'],
             'type' => ['required', 'in:in,out'],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'description' => ['nullable', 'string'],
             'actor_name' => ['nullable', 'string', 'max:255'],
-        ]);
+        ];
 
+        // 🔐 Date rule differs between store & update
+        if ($isUpdate) {
+            $rules['transaction_date'] = ['required', 'date'];
+        } else {
+            $rules['transaction_date'] = ['required', 'date', 'after_or_equal:today'];
+        }
+
+        return $request->validate($rules);
     }
+
     /* ================================
      * PRINT TRANSACTION SLIP
      * ================================ */
@@ -237,7 +247,6 @@ class TransactionController extends Controller
 
         if ($request->user()->cannot('update', $transaction)) {
             return back()->with('error', 'This transactssion belongs to a CLOSED accounting period and cannot be approved.');
-
         }
 
         if ($transaction->status !== 'pending') {
@@ -297,26 +306,70 @@ class TransactionController extends Controller
                 'amount'    => $transaction->amount,
             ],
         ]);
+}
 
 
-    }
-
-
-    public function reject(Transaction $transaction)
+    public function reject(Transaction $transaction, Request $request)
     {
         $this->authorize('approve', $transaction);
 
         if ($transaction->status !== 'pending') {
-            return back()->with('error', 'Transaction already processed.');
+            return back()->withErrors([
+                'error' => 'Transaction already processed.',
+            ]);
         }
 
-        $transaction->update([
-            'status'       => 'rejected',
-            'approved_at'  => null,
-            'approved_by'  => null,
-        ]);
+        DB::transaction(function () use ($transaction) {
 
-        return back()->with('success', 'Transaction rejected.');
+            // Transfer transaction → approve all linked transactions
+            if ($transaction->branch_transfer_id) {
+
+                $transactions = Transaction::where(
+                        'branch_transfer_id',
+                        $transaction->branch_transfer_id
+                    )
+                    ->lockForUpdate()
+                    ->get();
+
+                // Safety check (no partial approval)
+                if ($transactions->contains(fn ($tx) => $tx->status !== 'pending')) {
+                    throw new \Exception(
+                        'One or more transactions in this transfer already processed.'
+                    );
+                }
+
+                foreach ($transactions as $tx) {
+                    $tx->update([
+                        'status'      => 'rejected',
+                        'approved_at' => now(),
+                        'approved_by' => Auth::id(),
+                    ]);
+                }
+                $transfer = $transaction->branchTransfer;
+                $transfer->update([
+                    'status'      => 'rejected',
+                    'approved_at' => now(),
+                    'approved_by' => Auth::id(),
+                ]);
+
+            } else {
+                // Normal transaction
+                $transaction->update([
+                    'status'      => 'rejected',
+                    'approved_at' => now(),
+                    'approved_by' => Auth::id(),
+                ]);
+            }
+        });
+        
+        return back()->with([
+            'success' => 'Transaction Rejected',
+            'result' => [
+                'reference' => $transaction->full_reference,
+                'type'      => $transaction->type === 'in' ? 'In' : 'Out',
+                'amount'    => $transaction->amount,
+            ],
+        ]);
     }
 
     public function scan(Request $request)

@@ -17,7 +17,7 @@
             border: 2px solid #000;
             padding: 16px;
             width: 100%;
-            height: 250px;
+            height: 240px;
             box-sizing: border-box;
         }
 
@@ -116,7 +116,7 @@
 
             <div class="barcode">
                 <svg class="barcode-svg"
-                     jsbarcode-value="{{ $trx->reference }}"
+                     jsbarcode-value="{{ $trx->full_reference }}"
                      jsbarcode-width="1"
                      jsbarcode-height="30"
                      jsbarcode-fontsize="8"

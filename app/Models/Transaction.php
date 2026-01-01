@@ -88,15 +88,16 @@ class Transaction extends Model
     /**
      * Get the amount in Indonesian words
      */
-    private function currencyWord(): string
+    private function currencyMeta(): array
     {
-        return match ($this->currency?->code) {
-            'IDR' => 'rupiah',
-            'USD' => 'dolar',
-            'SGD' => 'dolar singapura',
-            'EUR' => 'euro',
-            'MYR' => 'ringgit malaysia',
-            default => '',
+
+        return match ($this->currency?->name) {
+            'IDR' => ['name' => 'rupiah', 'fraction' => 'sen'],
+            'USD' => ['name' => 'dolar', 'fraction' => 'sen'],
+            'SGD' => ['name' => 'dolar singapura', 'fraction' => 'sen'],
+            'MYR' => ['name' => 'ringgit malaysia', 'fraction' => 'sen'],
+            'EUR' => ['name' => 'euro', 'fraction' => 'sen'],
+            default => ['name' => '', 'fraction' => ''],
         };
     }
 
@@ -105,16 +106,30 @@ class Transaction extends Model
      */
     public function getAmountInWordsAttribute(): string
     {
-        $amount = (int) floor($this->amount);
-        $words  = $this->numberToIndonesianWords($amount);
+        $amount = number_format((float) $this->amount, 2, '.', '');
+        [$whole, $fraction] = explode('.', $amount);
 
-        return trim($words . ' ' . $this->currencyWord());
+        $meta = $this->currencyMeta();
+
+        $result = $this->spellInteger((int) $whole) . ' ' . $meta['name'];
+
+        if ((int) $fraction > 0) {
+            $result .= ' ' . $this->spellInteger((int) $fraction) . ' ' . $meta['fraction'];
+        }
+
+        return trim($result);
     }
 
     /**
      * Convert number to Indonesian words
      */
     private function numberToIndonesianWords(int $number): string
+    {
+        return $this->spellInteger($number);
+    }
+
+    
+    private function spellInteger(int $number): string
     {
         if ($number === 0) {
             return 'nol';
@@ -145,7 +160,7 @@ class Transaction extends Model
                 } elseif ($value === 1000 && $count === 1) {
                     $result .= 'seribu ';
                 } else {
-                    $result .= $this->numberToIndonesianWords($count) . " {$label} ";
+                    $result .= $this->spellInteger($count) . " {$label} ";
                 }
             }
         }
@@ -173,6 +188,8 @@ class Transaction extends Model
         return trim($result);
     }
 
+
+
     public function getFullReferenceAttribute(): string
     {
         return sprintf(
@@ -194,6 +211,7 @@ class Transaction extends Model
     {
         return $this->belongsTo(Currency::class);
     }
+
     public function approver()
     {
         return $this->belongsTo(User::class, 'approved_by');
